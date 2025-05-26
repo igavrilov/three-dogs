@@ -88,6 +88,11 @@ class GameApp {
       if (this.game) {
         this.game.updateGrass(data.position, data.color);
         this.updateScoreBoard(data.scores);
+        
+        // Show stealing notification
+        if (data.wasStolen && data.previousOwnerName && data.playerName) {
+          this.showStealNotification(data.playerName, data.previousOwnerName);
+        }
       }
     });
 
@@ -248,6 +253,33 @@ class GameApp {
 
   showError(message) {
     alert(message); // Simple error display - could be improved with a modal
+  }
+
+  showStealNotification(stealer, victim) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'steal-notification';
+    notification.innerHTML = `
+      <div class="steal-content">
+        🏴‍☠️ <strong>${stealer}</strong> stole territory from <strong>${victim}</strong>!
+      </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => notification.classList.add('show'), 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
   }
 
   playAgain() {

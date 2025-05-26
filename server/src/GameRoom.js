@@ -175,28 +175,37 @@ export default class GameRoom {
       return;
     }
     
-    // Color the grass if not already colored by this player
+    // Always allow coloring - players can steal territory from others!
     const currentOwner = this.grassMap.get(grassKey);
-    if (currentOwner !== playerId) {
-      // Remove score from previous owner if exists
-      if (currentOwner) {
-        const prevPlayer = this.players.get(currentOwner);
-        if (prevPlayer) {
-          prevPlayer.score = Math.max(0, prevPlayer.score - 1);
-        }
+    let wasStolen = false;
+    let previousOwnerName = null;
+    
+    // Remove score from previous owner if exists and it's not the same player
+    if (currentOwner && currentOwner !== playerId) {
+      const prevPlayer = this.players.get(currentOwner);
+      if (prevPlayer) {
+        prevPlayer.score = Math.max(0, prevPlayer.score - 1);
+        wasStolen = true;
+        previousOwnerName = prevPlayer.name;
       }
-      
-      // Add to current player's score
+    }
+    
+    // Only add score if this is a new tile or stolen from another player
+    if (!currentOwner || currentOwner !== playerId) {
       this.grassMap.set(grassKey, playerId);
       player.score += 1;
       
-      // Broadcast the grass update
+      // Broadcast the grass update with steal information
       this.broadcastToRoom({
         type: 'grass_colored',
         position: { x: grassX, z: grassZ },
         playerId,
         color: player.color,
-        scores: this.getCurrentScores()
+        scores: this.getCurrentScores(),
+        wasStolen,
+        previousOwner: currentOwner,
+        previousOwnerName,
+        playerName: player.name
       });
     }
   }

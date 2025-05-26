@@ -231,6 +231,39 @@
             display: none !important;
         }
         
+        /* Steal Notification */
+        .steal-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 3px solid #FFD700;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .steal-notification.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .steal-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
         /* Mobile optimizations */
         @media (max-width: 768px) {
             #gameHUD, #gameStatus, #controls {
@@ -250,6 +283,18 @@
             #mainMenu {
                 padding: 20px;
                 width: calc(100% - 40px);
+            }
+            
+            .steal-notification {
+                font-size: 1em;
+                padding: 15px 20px;
+                width: calc(100% - 40px);
+                left: 20px;
+                transform: translateY(-50%) scale(0.8);
+            }
+            
+            .steal-notification.show {
+                transform: translateY(-50%) scale(1);
             }
         }
     </style>
