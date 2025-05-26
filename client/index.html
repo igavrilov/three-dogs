@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐕 Dog Cleanup Battle</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Inter:wght@400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            background: #87CEEB;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* UI Overlays */
+        .ui-overlay {
+            position: absolute;
+            z-index: 1000;
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Main Menu */
+        #mainMenu {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #mainMenu h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            color: #FFD700;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+        }
+        
+        #mainMenu p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            color: #E0E0E0;
+            max-width: 400px;
+        }
+        
+        #playerNameInput {
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            outline: none;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Game HUD */
+        #gameHUD {
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            min-width: 300px;
+        }
+        
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .player-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        /* Game Status */
+        #gameStatus {
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+        
+        .timer {
+            font-size: 2em;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        /* Controls */
+        #controls {
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-item {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        
+        /* Connection Status */
+        #connectionStatus {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .connected {
+            background: rgba(76, 175, 80, 0.9);
+        }
+        
+        .disconnected {
+            background: rgba(244, 67, 54, 0.9);
+        }
+        
+        .waiting {
+            background: rgba(255, 193, 7, 0.9);
+            color: #333;
+        }
+        
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Winner Modal */
+        #winnerModal {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            border: 3px solid #FFD700;
+        }
+        
+        .winner-text {
+            font-family: 'Fredoka One', cursive;
+            font-size: 2.5em;
+            color: #FFD700;
+            margin-bottom: 20px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            #gameHUD, #gameStatus, #controls {
+                position: fixed;
+                width: calc(100% - 40px);
+                left: 20px;
+            }
+            
+            #gameHUD { top: 20px; }
+            #gameStatus { top: 120px; }
+            #controls { bottom: 20px; }
+            
+            #mainMenu h1 {
+                font-size: 2.5em;
+            }
+            
+            #mainMenu {
+                padding: 20px;
+                width: calc(100% - 40px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Main Menu -->
+        <div id="mainMenu" class="ui-overlay">
+            <h1>🐕 Dog Cleanup Battle</h1>
+            <p>Control your dog to clean up and color the most grass area with your poop!</p>
+            <input type="text" id="playerNameInput" placeholder="Enter your dog's name" maxlength="20">
+            <br>
+            <button id="joinGameBtn">🎮 Join Game</button>
+        </div>
+        
+        <!-- Game HUD -->
+        <div id="gameHUD" class="ui-overlay hidden">
+            <h3>🏆 Score Board</h3>
+            <div id="scoreBoard"></div>
+        </div>
+        
+        <!-- Game Status -->
+        <div id="gameStatus" class="ui-overlay hidden">
+            <div id="gameTimer" class="timer">2:00</div>
+            <div id="gamePhase">Waiting...</div>
+        </div>
+        
+        <!-- Controls -->
+        <div id="controls" class="ui-overlay hidden">
+            <h4>🎮 Controls</h4>
+            <div class="control-item">WASD / Arrow Keys: Move</div>
+            <div class="control-item">Space: Clean up</div>
+            <div class="control-item">Mouse: Look around</div>
+        </div>
+        
+        <!-- Connection Status -->
+        <div id="connectionStatus" class="ui-overlay waiting">
+            <span class="loading"></span> Connecting...
+        </div>
+        
+        <!-- Winner Modal -->
+        <div id="winnerModal" class="ui-overlay hidden">
+            <div class="winner-text">🎉 Game Over!</div>
+            <div id="winnerInfo"></div>
+            <button id="playAgainBtn">🔄 Play Again</button>
+        </div>
+    </div>
+    
+    <script type="module" src="/src/js/main.js"></script>
+</body>
+</html>

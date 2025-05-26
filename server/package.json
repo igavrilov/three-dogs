@@ -1,0 +1,23 @@
+{
+  "name": "dog-cleanup-server",
+  "version": "1.0.0",
+  "description": "Server for the dog cleanup multiplayer game",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "lint": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "test": "echo 'Running server tests...'"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "uuid": "^9.0.1"
+  },
+  "keywords": ["game", "server", "websocket", "multiplayer"],
+  "author": "Ivan",
+  "license": "MIT"
+}

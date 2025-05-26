@@ -1,0 +1,28 @@
+{
+  "name": "dog-cleanup-game",
+  "version": "1.0.0",
+  "description": "A low-poly 3D multiplayer dog cleanup game built with Three.js",
+  "main": "server/src/index.js",
+  "type": "module",
+  "scripts": {
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "lint": "eslint . --fix && cd client && npm run lint && cd ../server && npm run lint",
+    "format": "prettier --write .",
+    "test": "cd client && npm run test && cd ../server && npm run test",
+    "typecheck": "cd client && npm run typecheck"
+  },
+  "keywords": ["game", "multiplayer", "3d", "threejs", "websocket"],
+  "author": "Ivan",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
+  }
+}
