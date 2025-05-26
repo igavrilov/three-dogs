@@ -9,6 +9,18 @@ export default defineConfig({
       port: 5174
     }
   },
+  preview: {
+    host: true,
+    port: process.env.PORT || 4173,
+    allowedHosts: [
+      'heartfelt-upliftment-production.up.railway.app',
+      '.railway.app',
+      '.vercel.app',
+      '.netlify.app',
+      '.render.com',
+      'localhost'
+    ]
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
