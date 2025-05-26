@@ -20,16 +20,15 @@ export default class NetworkManager {
       const port = 3001; // Server port
       return `${protocol}//${host}:${port}`;
     } else {
-      // Production mode - use environment variable or default deployed server URL
+      // Production mode - use environment variable or hardcoded server URL
       const serverUrl = import.meta.env.VITE_SERVER_URL;
       if (serverUrl) {
         return serverUrl;
       }
       
-      // Fallback: assume server is on same domain with wss
-      const protocol = 'wss:';
-      const host = window.location.hostname;
-      return `${protocol}//${host}`;
+      // Hardcoded server URL for Railway deployment
+      // Replace this with your actual server Railway URL
+      return 'wss://three-dogs-production.up.railway.app';
     }
   }
 
