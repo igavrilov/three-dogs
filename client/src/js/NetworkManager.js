@@ -18,26 +18,26 @@ export default class NetworkManager {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.hostname;
       const port = 3001; // Server port
-      return `${protocol}//${host}:${port}`;
+      const url = `${protocol}//${host}:${port}`;
+      console.log('🔧 Development WebSocket URL:', url);
+      return url;
     } else {
-      // Production mode - use environment variable or hardcoded server URL
-      const serverUrl = import.meta.env.VITE_SERVER_URL;
-      if (serverUrl) {
-        return serverUrl;
-      }
-      
-      // Hardcoded server URL for Railway deployment
-      // Replace this with your actual server Railway URL
-      return 'wss://three-dogs-production.up.railway.app';
+      // Production mode - always use hardcoded server URL for now
+      const hardcodedUrl = 'wss://three-dogs-production.up.railway.app';
+      console.log('🔧 Production mode - using hardcoded server URL:', hardcodedUrl);
+      console.log('🔧 Current hostname:', window.location.hostname);
+      console.log('🔧 Current location:', window.location.href);
+      return hardcodedUrl;
     }
   }
 
   connect() {
     try {
+      console.log('🔌 Attempting to connect to WebSocket URL:', this.serverUrl);
       this.ws = new WebSocket(this.serverUrl);
       
       this.ws.onopen = () => {
-        console.log('🔌 Connected to game server');
+        console.log('🔌 Connected to game server at:', this.serverUrl);
         this.isConnected = true;
         this.reconnectAttempts = 0;
       };
