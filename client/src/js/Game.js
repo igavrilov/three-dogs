@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import DogModel from './DogModel.js';
 import GrassField from './GrassField.js';
+import PoopModel from './PoopModel.js';
+import SoundManager from './SoundManager.js';
 
 export default class Game {
   constructor(networkManager, playerId) {
@@ -17,6 +19,8 @@ export default class Game {
     this.players = new Map();
     this.grassField = null;
     this.localPlayer = null;
+    this.poopModels = new Map(); // Store poop models by tile position
+    this.soundManager = null;
     
     // Game state
     this.isGameStarted = false;
@@ -40,6 +44,10 @@ export default class Game {
     // Cleanup action
     this.lastCleanupTime = 0;
     this.cleanupCooldown = 500; // 500ms cooldown between cleanups
+    
+    // Movement tracking for footstep sounds
+    this.lastFootstepTime = 0;
+    this.footstepInterval = 400; // Play footstep every 400ms when moving
   }
 
   initialize(gameData) {
@@ -49,6 +57,7 @@ export default class Game {
     this.setupWorld();
     this.setupPlayers(gameData.players);
     this.setupControls();
+    this.setupAudio();
     this.startGameLoop();
     
     console.log('🎮 Game initialized with data:', gameData);
@@ -207,6 +216,11 @@ export default class Game {
     console.log('🎮 Controls setup complete');
   }
 
+  setupAudio() {
+    this.soundManager = new SoundManager();
+    console.log('🔊 Audio system initialized');
+  }
+
   onKeyDown(event) {
     this.keys[event.code] = true;
     console.log('🎮 Key pressed:', event.code, 'Game started:', this.isGameStarted);
@@ -250,6 +264,17 @@ export default class Game {
     
     if (this.localPlayer) {
       const { position } = this.localPlayer.dog;
+      
+      // Play poop sound
+      if (this.soundManager) {
+        this.soundManager.playPoopSound();
+      }
+      
+      // Trigger dog cleanup animation
+      if (this.localPlayer.dog.performCleanupAnimation) {
+        this.localPlayer.dog.performCleanupAnimation();
+      }
+      
       this.networkManager.sendPlayerAction('cleanup', {
         x: position.x,
         y: position.y,
@@ -315,8 +340,16 @@ export default class Game {
       // Rotate dog to face movement direction
       dog.rotation.y = Math.atan2(finalDirection.x, finalDirection.z);
       
-      // Send position update
+      // Get current time for sound and network updates
       const now = Date.now();
+      
+      // Play footstep sounds
+      if (this.soundManager && now - this.lastFootstepTime > this.footstepInterval) {
+        this.soundManager.playFootstepSound();
+        this.lastFootstepTime = now;
+      }
+      
+      // Send position update
       if (now - this.lastMoveUpdate > this.moveUpdateInterval) {
         this.networkManager.sendPlayerMove(
           {
@@ -359,10 +392,50 @@ export default class Game {
     }
   }
 
-  updateGrass(position, color) {
+  updateGrass(position, color, wasStolen = false) {
     if (this.grassField) {
       this.grassField.colorTile(position.x, position.z, color);
+      
+      // Add poop model at this position
+      this.addPoopModel(position, color);
+      
+      // Play appropriate sound effect
+      if (this.soundManager) {
+        if (wasStolen) {
+          this.soundManager.playStealSound();
+        } else {
+          this.soundManager.playSuccessSound();
+        }
+      }
     }
+  }
+
+  addPoopModel(tilePosition, color) {
+    const tileKey = `${tilePosition.x},${tilePosition.z}`;
+    
+    // Remove existing poop model if it exists
+    if (this.poopModels.has(tileKey)) {
+      const existingPoop = this.poopModels.get(tileKey);
+      this.scene.remove(existingPoop.mesh);
+      existingPoop.dispose();
+      this.poopModels.delete(tileKey);
+    }
+    
+    // Create new poop model
+    const poopSize = 0.8 + Math.random() * 0.4; // Random size between 0.8 and 1.2
+    const poop = new PoopModel(color, poopSize);
+    
+    // Position the poop at the center of the tile
+    const worldX = tilePosition.x;
+    const worldZ = tilePosition.z;
+    poop.setPosition(worldX, 0.1, worldZ);
+    
+    // Add to scene and store reference
+    this.scene.add(poop.mesh);
+    this.poopModels.set(tileKey, poop);
+    
+    // Animate the poop appearance
+    poop.animateAppearance();
   }
 
   startGame() {
@@ -370,6 +443,11 @@ export default class Game {
     console.log('🚀 Game started! Controls should now work.');
     console.log('🎮 Local player:', this.localPlayer ? 'Found' : 'Not found');
     console.log('🎮 Keys object:', this.keys);
+    
+    // Start ambient sounds
+    if (this.soundManager) {
+      this.soundManager.startAmbientSound();
+    }
     
     // Test if controls are working by forcing movement for 2 seconds
     setTimeout(() => {
@@ -413,6 +491,18 @@ export default class Game {
   }
 
   destroy() {
+    // Clean up poop models
+    this.poopModels.forEach(poop => {
+      this.scene.remove(poop.mesh);
+      poop.dispose();
+    });
+    this.poopModels.clear();
+    
+    // Clean up sound manager
+    if (this.soundManager) {
+      this.soundManager.dispose();
+    }
+    
     // Clean up Three.js resources
     if (this.renderer) {
       this.renderer.dispose();

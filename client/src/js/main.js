@@ -27,7 +27,8 @@ class GameApp {
       scoreBoard: document.getElementById('scoreBoard'),
       gameTimer: document.getElementById('gameTimer'),
       gamePhase: document.getElementById('gamePhase'),
-      winnerInfo: document.getElementById('winnerInfo')
+      winnerInfo: document.getElementById('winnerInfo'),
+      volumeSlider: document.getElementById('volumeSlider')
     };
 
     // Event listeners
@@ -38,6 +39,14 @@ class GameApp {
     this.elements.playerNameInput.addEventListener('keypress', e => {
       if (e.key === 'Enter') {
         this.joinGame();
+      }
+    });
+
+    // Volume control
+    this.elements.volumeSlider.addEventListener('input', e => {
+      const volume = parseInt(e.target.value) / 100;
+      if (this.game && this.game.soundManager) {
+        this.game.soundManager.setMasterVolume(volume);
       }
     });
 
@@ -86,7 +95,7 @@ class GameApp {
 
     this.networkManager.on('grass_colored', data => {
       if (this.game) {
-        this.game.updateGrass(data.position, data.color);
+        this.game.updateGrass(data.position, data.color, data.wasStolen);
         this.updateScoreBoard(data.scores);
         
         // Show stealing notification

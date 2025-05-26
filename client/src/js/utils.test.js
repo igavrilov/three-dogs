@@ -7,9 +7,7 @@ export const calculateDistance = (pos1, pos2) => {
   return Math.sqrt(dx * dx + dz * dz);
 };
 
-export const isWithinBounds = (position, bounds) => {
-  return Math.abs(position.x) <= bounds && Math.abs(position.z) <= bounds;
-};
+export const isWithinBounds = (position, bounds) => Math.abs(position.x) <= bounds && Math.abs(position.z) <= bounds;
 
 // Tests
 describe('Game Utilities', () => {
