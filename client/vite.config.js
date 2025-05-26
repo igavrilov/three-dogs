@@ -11,14 +11,12 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
     minify: 'esbuild',
     target: 'es2020',
     rollupOptions: {
       output: {
-        manualChunks: {
-          three: ['three']
-        }
+        manualChunks: undefined
       }
     }
   },
