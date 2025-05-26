@@ -13,7 +13,6 @@ app.use(express.json());
 
 // Game state
 const gameRooms = new Map();
-const waitingPlayers = [];
 
 // HTTP server
 const server = app.listen(PORT, () => {
@@ -25,10 +24,11 @@ const wss = new WebSocketServer({ server });
 
 // Health check endpoint
 app.get('/health', (req, res) => {
+  const totalPlayers = Array.from(gameRooms.values()).reduce((sum, room) => sum + room.getPlayerCount(), 0);
   res.json({ 
     status: 'healthy', 
     rooms: gameRooms.size,
-    waitingPlayers: waitingPlayers.length
+    totalPlayers: totalPlayers
   });
 });
 
@@ -78,35 +78,46 @@ function handleJoinGame(ws, message) {
   const { playerName } = message;
   ws.playerName = playerName.trim();
   
-  waitingPlayers.push(ws);
+  // Find an existing room that's waiting for players or create a new one
+  let gameRoom = null;
+  let roomId = null;
   
-  if (waitingPlayers.length >= 2) {
-    const player1 = waitingPlayers.shift();
-    const player2 = waitingPlayers.shift();
-    
-    const roomId = uuidv4();
-    const gameRoom = new GameRoom(roomId);
-    
-    gameRoom.addPlayer(player1);
-    gameRoom.addPlayer(player2);
-    
-    player1.gameRoom = gameRoom;
-    player2.gameRoom = gameRoom;
-    
+  // Look for a room that's still waiting for players
+  for (const [id, room] of gameRooms) {
+    if (room.gameState === 'waiting') {
+      gameRoom = room;
+      roomId = id;
+      break;
+    }
+  }
+  
+  // If no waiting room found, create a new one
+  if (!gameRoom) {
+    roomId = uuidv4();
+    gameRoom = new GameRoom(roomId);
     gameRooms.set(roomId, gameRoom);
-    
-    // Send game found message first
-    gameRoom.broadcastToRoom({
-      type: 'game_found',
-      roomId,
-      players: gameRoom.getPlayersInfo(),
-      gameState: gameRoom.getGameState()
-    });
-    
-    // Auto-start the game after a short delay
+  }
+  
+  // Add player to the room
+  gameRoom.addPlayer(ws);
+  ws.gameRoom = gameRoom;
+  
+  // Send game found message
+  gameRoom.broadcastToRoom({
+    type: 'game_found',
+    roomId,
+    players: gameRoom.getPlayersInfo(),
+    gameState: gameRoom.getGameState()
+  });
+  
+  // Auto-start the game after a short delay if this is the first player
+  // or if there are already multiple players
+  if (gameRoom.getPlayerCount() >= 1) {
     setTimeout(() => {
-      gameRoom.setPlayerReady(player1.playerId);
-      gameRoom.setPlayerReady(player2.playerId);
+      // Set all current players as ready
+      gameRoom.players.forEach((player) => {
+        gameRoom.setPlayerReady(player.id);
+      });
     }, 1000); // 1 second delay to allow UI to initialize
   }
 }
@@ -124,11 +135,6 @@ function handlePlayerAction(ws, message) {
 }
 
 function handlePlayerDisconnect(ws) {
-  const waitingIndex = waitingPlayers.findIndex(player => player.playerId === ws.playerId);
-  if (waitingIndex !== -1) {
-    waitingPlayers.splice(waitingIndex, 1);
-  }
-  
   if (ws.gameRoom) {
     ws.gameRoom.removePlayer(ws.playerId);
     if (ws.gameRoom.getPlayerCount() === 0) {

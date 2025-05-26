@@ -48,16 +48,41 @@ export default class GameRoom {
   }
 
   getSpawnPosition(playerIndex) {
-    const spawnPositions = [
-      { x: -20, y: 0.5, z: 0 },  // Player 1
-      { x: 20, y: 0.5, z: 0 }    // Player 2
-    ];
-    return spawnPositions[playerIndex] || { x: 0, y: 0.5, z: 0 };
+    // Create spawn positions in a circle around the center
+    const radius = 15;
+    const angle = (playerIndex * 2 * Math.PI) / Math.max(8, this.players.size + 1); // Distribute evenly, minimum 8 positions
+    
+    return {
+      x: Math.cos(angle) * radius,
+      y: 0.5,
+      z: Math.sin(angle) * radius
+    };
   }
 
   getPlayerColor(playerIndex) {
-    const colors = ['#8B4513', '#D2691E']; // Brown colors for poop
-    return colors[playerIndex] || '#654321';
+    const colors = [
+      '#8B4513', // Saddle Brown
+      '#D2691E', // Chocolate
+      '#A0522D', // Sienna
+      '#CD853F', // Peru
+      '#DEB887', // Burlywood
+      '#F4A460', // Sandy Brown
+      '#DAA520', // Goldenrod
+      '#B8860B', // Dark Goldenrod
+      '#9ACD32', // Yellow Green
+      '#32CD32', // Lime Green
+      '#228B22', // Forest Green
+      '#006400', // Dark Green
+      '#4169E1', // Royal Blue
+      '#0000CD', // Medium Blue
+      '#8A2BE2', // Blue Violet
+      '#9400D3', // Violet
+      '#FF1493', // Deep Pink
+      '#DC143C', // Crimson
+      '#B22222', // Fire Brick
+      '#800000'  // Maroon
+    ];
+    return colors[playerIndex % colors.length];
   }
 
   setPlayerReady(playerId) {
@@ -66,7 +91,8 @@ export default class GameRoom {
     // Check if all players are ready
     const allReady = Array.from(this.playerReadyStatus.values()).every(ready => ready);
     
-    if (allReady && this.players.size === 2) {
+    // Start game when all players are ready (minimum 1 player)
+    if (allReady && this.players.size >= 1) {
       this.startGame();
     }
     
