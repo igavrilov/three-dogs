@@ -6,7 +6,8 @@ class GameApp {
     this.game = null;
     this.networkManager = null;
     this.currentPlayerId = null;
-    this.gameState = 'menu'; // menu, waiting, playing, finished
+    this.gameState = 'menu'; // menu, waiting, countdown, playing, finished
+    this.countdownTimer = null;
     
     this.initializeUI();
     this.connectToServer();
@@ -109,6 +110,18 @@ class GameApp {
       this.onGameEnded(data);
     });
 
+    this.networkManager.on('countdown_started', data => {
+      this.onCountdownStarted(data);
+    });
+
+    this.networkManager.on('countdown_update', data => {
+      this.onCountdownUpdate(data);
+    });
+
+    this.networkManager.on('countdown_cancelled', data => {
+      this.onCountdownCancelled(data);
+    });
+
     this.networkManager.connect();
   }
 
@@ -131,8 +144,8 @@ class GameApp {
 
   showWaitingScreen() {
     this.hideAllScreens();
-    this.updateConnectionStatus('waiting', 'Waiting for another player...');
-    this.elements.gamePhase.textContent = 'Waiting for another player...';
+    this.updateConnectionStatus('waiting', 'Waiting for players...');
+    this.elements.gamePhase.textContent = 'Waiting for players...';
     this.elements.gameStatus.classList.remove('hidden');
   }
 
@@ -192,11 +205,66 @@ class GameApp {
     }, 100);
   }
 
+  onCountdownStarted(data) {
+    this.gameState = 'countdown';
+    this.elements.gamePhase.textContent = 'Game starting in 1 minute...';
+    this.startCountdownTimer(data.countdownDuration);
+    
+    console.log('⏰ Countdown started - game will begin in 1 minute');
+  }
+
+  onCountdownUpdate(data) {
+    const minutes = Math.floor(data.remaining / 60000);
+    const seconds = Math.floor((data.remaining % 60000) / 1000);
+    this.elements.gamePhase.textContent = `Game starting in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  onCountdownCancelled(data) {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    
+    this.gameState = 'waiting';
+    this.elements.gamePhase.textContent = `Countdown cancelled: ${data.reason}`;
+    
+    setTimeout(() => {
+      this.elements.gamePhase.textContent = 'Waiting for more players...';
+    }, 3000);
+    
+    console.log('⏰ Countdown cancelled:', data.reason);
+  }
+
+  startCountdownTimer(duration) {
+    const startTime = Date.now();
+    
+    this.countdownTimer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, duration - elapsed);
+      
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      
+      this.elements.gameTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      this.elements.gamePhase.textContent = `Game starting in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      
+      if (remaining <= 0) {
+        clearInterval(this.countdownTimer);
+        this.countdownTimer = null;
+      }
+    }, 100);
+  }
+
   onGameEnded(data) {
     this.gameState = 'finished';
     
     if (this.gameTimer) {
       clearInterval(this.gameTimer);
+    }
+    
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
     }
     
     // Show winner modal
@@ -300,6 +368,11 @@ class GameApp {
     
     if (this.gameTimer) {
       clearInterval(this.gameTimer);
+    }
+    
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
     }
     
     this.gameState = 'menu';

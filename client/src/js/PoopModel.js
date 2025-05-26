@@ -14,8 +14,8 @@ export default class PoopModel {
     const segments = 3 + Math.floor(Math.random() * 3); // 3-5 segments
     
     for (let i = 0; i < segments; i++) {
-      const segmentHeight = 0.3 + Math.random() * 0.4;
-      const segmentRadius = 0.15 + Math.random() * 0.1;
+      const segmentHeight = 0.15 + Math.random() * 0.2; // Reduced from 0.3-0.7 to 0.15-0.35
+      const segmentRadius = 0.12 + Math.random() * 0.08; // Slightly smaller radius too
       
       // Create slightly irregular cylinder for each segment
       const geometry = new THREE.CylinderGeometry(
@@ -53,9 +53,9 @@ export default class PoopModel {
       const segment = new THREE.Mesh(geometry, material);
       
       // Position segments in a slightly curved pile
-      const yOffset = i * segmentHeight * 0.7;
-      const xOffset = (Math.random() - 0.5) * 0.1;
-      const zOffset = (Math.random() - 0.5) * 0.1;
+      const yOffset = i * segmentHeight * 0.6; // Reduced stacking height
+      const xOffset = (Math.random() - 0.5) * 0.08;
+      const zOffset = (Math.random() - 0.5) * 0.08;
       
       segment.position.set(xOffset, yOffset, zOffset);
       segment.rotation.y = Math.random() * Math.PI * 2;
@@ -97,9 +97,9 @@ export default class PoopModel {
       
       // Position bumps randomly on the surface
       bump.position.set(
-        (Math.random() - 0.5) * 0.3,
-        Math.random() * 0.8,
-        (Math.random() - 0.5) * 0.3
+        (Math.random() - 0.5) * 0.25,
+        Math.random() * 0.4, // Reduced height for bumps
+        (Math.random() - 0.5) * 0.25
       );
       
       bump.castShadow = true;

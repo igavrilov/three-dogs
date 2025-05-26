@@ -28,7 +28,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     rooms: gameRooms.size,
-    totalPlayers: totalPlayers
+    totalPlayers
   });
 });
 
@@ -115,7 +115,7 @@ function handleJoinGame(ws, message) {
   if (gameRoom.getPlayerCount() >= 1) {
     setTimeout(() => {
       // Set all current players as ready
-      gameRoom.players.forEach((player) => {
+      gameRoom.players.forEach(player => {
         gameRoom.setPlayerReady(player.id);
       });
     }, 1000); // 1 second delay to allow UI to initialize

@@ -2,11 +2,16 @@ export default class GameRoom {
   constructor(roomId) {
     this.roomId = roomId;
     this.players = new Map();
-    this.gameState = 'waiting'; // waiting, playing, finished
+    this.gameState = 'waiting'; // waiting, countdown, playing, finished
     this.gameStartTime = null;
     this.gameDuration = 120000; // 2 minutes
     this.grassMap = new Map(); // position -> playerId (who colored it)
     this.playerReadyStatus = new Map();
+    
+    // Game countdown configuration
+    this.countdownDuration = 60000; // 1 minute countdown
+    this.countdownStartTime = null;
+    this.countdownTimer = null;
     
     // Game world configuration
     this.worldSize = { x: 50, z: 50 };
@@ -29,6 +34,11 @@ export default class GameRoom {
     this.playerReadyStatus.set(ws.playerId, false);
     
     console.log(`✅ Player ${ws.playerName} joined room ${this.roomId}`);
+    
+    // Start countdown when 2 players join
+    if (this.players.size === 2 && this.gameState === 'waiting') {
+      this.startCountdown();
+    }
   }
 
   removePlayer(playerId) {
@@ -37,6 +47,23 @@ export default class GameRoom {
       this.players.delete(playerId);
       this.playerReadyStatus.delete(playerId);
       console.log(`❌ Player ${player.name} left room ${this.roomId}`);
+      
+      // Cancel countdown if less than 2 players remain
+      if (this.gameState === 'countdown' && this.players.size < 2) {
+        if (this.countdownTimer) {
+          clearTimeout(this.countdownTimer);
+          this.countdownTimer = null;
+        }
+        this.gameState = 'waiting';
+        this.countdownStartTime = null;
+        
+        this.broadcastToRoom({
+          type: 'countdown_cancelled',
+          reason: 'Not enough players'
+        });
+        
+        console.log(`⏰ Countdown cancelled in room ${this.roomId} - not enough players`);
+      }
       
       // Notify remaining players
       this.broadcastToRoom({
@@ -85,14 +112,66 @@ export default class GameRoom {
     return colors[playerIndex % colors.length];
   }
 
+  startCountdown() {
+    if (this.gameState !== 'waiting') return;
+    
+    this.gameState = 'countdown';
+    this.countdownStartTime = Date.now();
+    
+    console.log(`⏰ Starting 1-minute countdown in room ${this.roomId}`);
+    
+    // Broadcast countdown start
+    this.broadcastToRoom({
+      type: 'countdown_started',
+      countdownDuration: this.countdownDuration,
+      startTime: this.countdownStartTime
+    });
+    
+    // Set countdown timer
+    this.countdownTimer = setTimeout(() => {
+      this.startGame();
+    }, this.countdownDuration);
+    
+    // Send countdown updates every 10 seconds
+    this.sendCountdownUpdates();
+  }
+
+  sendCountdownUpdates() {
+    const sendUpdate = () => {
+      if (this.gameState !== 'countdown') return;
+      
+      const elapsed = Date.now() - this.countdownStartTime;
+      const remaining = Math.max(0, this.countdownDuration - elapsed);
+      
+      this.broadcastToRoom({
+        type: 'countdown_update',
+        remaining
+      });
+      
+      if (remaining > 0) {
+        setTimeout(sendUpdate, 10000); // Update every 10 seconds
+      }
+    };
+    
+    setTimeout(sendUpdate, 10000); // First update after 10 seconds
+  }
+
   setPlayerReady(playerId) {
     this.playerReadyStatus.set(playerId, true);
     
     // Check if all players are ready
     const allReady = Array.from(this.playerReadyStatus.values()).every(ready => ready);
     
-    // Start game when all players are ready (minimum 1 player)
-    if (allReady && this.players.size >= 1) {
+    // During countdown, if all players are ready, start immediately
+    if (this.gameState === 'countdown' && allReady && this.players.size >= 2) {
+      if (this.countdownTimer) {
+        clearTimeout(this.countdownTimer);
+        this.countdownTimer = null;
+      }
+      this.startGame();
+    }
+    // If still waiting and only 1 player, start immediately when ready
+    else if (this.gameState === 'waiting' && allReady && this.players.size === 1) {
       this.startGame();
     }
     
