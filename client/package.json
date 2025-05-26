@@ -9,7 +9,8 @@
     "lint": "eslint src/ --fix",
     "format": "prettier --write src/",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "three": "^0.158.0",

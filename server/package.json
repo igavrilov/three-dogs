@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
+    "build": "echo 'No build step needed for server'",
     "lint": "eslint src/ --fix",
     "format": "prettier --write src/",
     "test": "echo 'Running server tests...'"

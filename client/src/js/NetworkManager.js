@@ -12,10 +12,25 @@ export default class NetworkManager {
   }
 
   getServerUrl() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname;
-    const port = 3001; // Server port
-    return `${protocol}//${host}:${port}`;
+    // Check if we're in production (deployed) or development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // Development mode - connect to local server
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname;
+      const port = 3001; // Server port
+      return `${protocol}//${host}:${port}`;
+    } else {
+      // Production mode - use environment variable or default deployed server URL
+      const serverUrl = import.meta.env.VITE_SERVER_URL;
+      if (serverUrl) {
+        return serverUrl;
+      }
+      
+      // Fallback: assume server is on same domain with wss
+      const protocol = 'wss:';
+      const host = window.location.hostname;
+      return `${protocol}//${host}`;
+    }
   }
 
   connect() {
