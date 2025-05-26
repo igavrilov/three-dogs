@@ -28,7 +28,7 @@ Deploy your Dog Cleanup Game online for free so you can play with friends!
 2. **Important**: Set the root directory to `client`
 3. In the client service settings:
    - Build command: `npm run build`
-   - Start command: `npm run preview`
+   - Start command: `npm start`
 4. Set environment variable:
    - `VITE_SERVER_URL`: `wss://your-server-url.railway.app` (replace with your server URL)
 5. Deploy the client
