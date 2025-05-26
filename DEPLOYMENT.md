@@ -16,20 +16,22 @@ Deploy your Dog Cleanup Game online for free so you can play with friends!
 1. Go to [Railway.app](https://railway.app) and sign up
 2. Click "New Project" → "Deploy from GitHub repo"
 3. Select your repository
-4. Railway will auto-detect it's a Node.js project
-5. Set these environment variables in Railway:
+4. **Important**: Set the root directory to `server`
+5. Railway will auto-detect it's a Node.js project
+6. Set these environment variables in Railway:
    - `PORT`: `3001`
    - `NODE_ENV`: `production`
-6. Deploy and copy the server URL (e.g., `https://your-app.railway.app`)
+7. Deploy and copy the server URL (e.g., `https://your-server.railway.app`)
 
 ### Step 3: Deploy the Client
 1. Create another Railway service for the client
-2. In the client service settings:
-   - Set build command: `npm run build`
-   - Set start command: `npm run preview`
-3. Set environment variable:
+2. **Important**: Set the root directory to `client`
+3. In the client service settings:
+   - Build command: `npm run build`
+   - Start command: `npm run preview`
+4. Set environment variable:
    - `VITE_SERVER_URL`: `wss://your-server-url.railway.app` (replace with your server URL)
-4. Deploy the client
+5. Deploy the client
 
 ### Step 4: Play!
 - Share the client URL with your friend
@@ -70,9 +72,12 @@ Deploy your Dog Cleanup Game online for free so you can play with friends!
 ## Troubleshooting
 
 ### Common Issues:
-1. **WebSocket connection fails**: Make sure you're using `wss://` (not `ws://`) for HTTPS sites
-2. **Server not starting**: Check that `PORT` environment variable is set
-3. **Client can't connect**: Verify the `VITE_SERVER_URL` is correct
+1. **Build fails with "vite: not found"**: Make sure you set the root directory correctly:
+   - Server: Set root directory to `server`
+   - Client: Set root directory to `client`
+2. **WebSocket connection fails**: Make sure you're using `wss://` (not `ws://`) for HTTPS sites
+3. **Server not starting**: Check that `PORT` environment variable is set
+4. **Client can't connect**: Verify the `VITE_SERVER_URL` is correct
 
 ### Testing Locally Before Deployment:
 ```bash
