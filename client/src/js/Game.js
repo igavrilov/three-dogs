@@ -641,16 +641,6 @@ export default class Game {
     if (this.soundManager) {
       this.soundManager.startAmbientSound();
     }
-    
-    // Test if controls are working by forcing movement for 2 seconds
-    setTimeout(() => {
-      console.log('🧪 Testing movement - simulating W key press');
-      this.keys['KeyW'] = true;
-      setTimeout(() => {
-        this.keys['KeyW'] = false;
-        console.log('🧪 Movement test complete');
-      }, 2000);
-    }, 1000);
   }
 
   startGameLoop() {
