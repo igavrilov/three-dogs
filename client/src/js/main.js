@@ -22,6 +22,7 @@ class GameApp {
       controls: document.getElementById('controls'),
       connectionStatus: document.getElementById('connectionStatus'),
       winnerModal: document.getElementById('winnerModal'),
+      gameLog: document.getElementById('gameLog'),
       playerNameInput: document.getElementById('playerNameInput'),
       joinGameBtn: document.getElementById('joinGameBtn'),
       playAgainBtn: document.getElementById('playAgainBtn'),
@@ -420,30 +421,38 @@ class GameApp {
   }
 
   showStealNotification(stealer, victim) {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = 'steal-notification';
-    notification.innerHTML = `
-      <div class="steal-content">
-        🏴‍☠️ <strong>${stealer}</strong> stole territory from <strong>${victim}</strong>!
-      </div>
-    `;
+    this.addLogMessage(`🏴‍☠️ ${stealer} stole territory from ${victim}`, 'steal');
+  }
+
+  addLogMessage(message, type = 'info') {
+    // Create log message element
+    const logMessage = document.createElement('div');
+    logMessage.className = `log-message ${type}`;
+    logMessage.textContent = message;
     
-    // Add to page
-    document.body.appendChild(notification);
+    // Add to log container
+    this.elements.gameLog.appendChild(logMessage);
     
-    // Animate in
-    setTimeout(() => notification.classList.add('show'), 100);
+    // Scroll to bottom
+    this.elements.gameLog.scrollTop = this.elements.gameLog.scrollHeight;
     
-    // Remove after 3 seconds
+    // Auto-remove after 5 seconds
     setTimeout(() => {
-      notification.classList.remove('show');
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      }, 300);
-    }, 3000);
+      if (logMessage.parentNode) {
+        logMessage.style.animation = 'fadeOutLog 0.3s ease forwards';
+        setTimeout(() => {
+          if (logMessage.parentNode) {
+            logMessage.parentNode.removeChild(logMessage);
+          }
+        }, 300);
+      }
+    }, 5000);
+    
+    // Keep only the last 10 messages to prevent memory issues
+    const messages = this.elements.gameLog.children;
+    while (messages.length > 10) {
+      this.elements.gameLog.removeChild(messages[0]);
+    }
   }
 
   playAgain() {
