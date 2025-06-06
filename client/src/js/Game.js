@@ -132,8 +132,8 @@ export default class Game {
     // Create skybox with animated clouds and sun
     this.setupSkybox();
     
-    // Create grass field
-    this.grassField = new GrassField(50, 50);
+    // Create extended grass field that goes beyond the fence
+    this.grassField = new GrassField(150, 150);
     this.scene.add(this.grassField.mesh);
     
     // Add fence around the play area
@@ -204,8 +204,8 @@ export default class Game {
     
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
     
-    // Position the sun much closer and higher
-    sun.position.set(20, 30, 10);
+    // Position the sun much further away and higher
+    sun.position.set(80, 50, 60);
     this.scene.add(sun);
     
     console.log('🌞 Sun created at position:', sun.position);
@@ -222,16 +222,16 @@ export default class Game {
     sunGlow.position.copy(sun.position);
     this.scene.add(sunGlow);
     
-    // Add a second sun that's visible on the horizon
+    // Add a second sun that's visible on the horizon but further away
     const horizonSun = new THREE.Mesh(
-      new THREE.SphereGeometry(2, 16, 16),
+      new THREE.SphereGeometry(3, 16, 16),
       new THREE.MeshBasicMaterial({
         color: 0xffff00,
         emissive: 0xffff00,
         emissiveIntensity: 1.0
       })
     );
-    horizonSun.position.set(30, 10, 30); // On horizon, visible from current camera angle
+    horizonSun.position.set(90, 15, 90); // On horizon, visible from current camera angle but much further
     this.scene.add(horizonSun);
     console.log('🌅 Horizon sun created at:', horizonSun.position);
   }
@@ -352,39 +352,40 @@ export default class Game {
     const postMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
     const railMaterial = new THREE.MeshLambertMaterial({ color: 0xA0522D });
     
-    // Create fence around the perimeter
-    const perimeter = 8; // Number of sides for octagonal fence
-    for (let i = 0; i < perimeter; i++) {
-      const angle1 = (i / perimeter) * Math.PI * 2;
-      const angle2 = ((i + 1) / perimeter) * Math.PI * 2;
-      
-      const x1 = Math.cos(angle1) * fenceDistance;
-      const z1 = Math.sin(angle1) * fenceDistance;
-      const x2 = Math.cos(angle2) * fenceDistance;
-      const z2 = Math.sin(angle2) * fenceDistance;
+    // Create square fence - 4 sides
+    const corners = [
+      { x: -fenceDistance, z: -fenceDistance },
+      { x: fenceDistance, z: -fenceDistance },
+      { x: fenceDistance, z: fenceDistance },
+      { x: -fenceDistance, z: fenceDistance }
+    ];
+    
+    for (let i = 0; i < 4; i++) {
+      const corner1 = corners[i];
+      const corner2 = corners[(i + 1) % 4];
       
       // Create fence posts at corners
       const postGeometry = new THREE.CylinderGeometry(fencePostRadius, fencePostRadius, fenceHeight);
-      const post1 = new THREE.Mesh(postGeometry, postMaterial);
-      post1.position.set(x1, fenceHeight / 2, z1);
-      post1.castShadow = true;
-      this.scene.add(post1);
+      const post = new THREE.Mesh(postGeometry, postMaterial);
+      post.position.set(corner1.x, fenceHeight / 2, corner1.z);
+      post.castShadow = true;
+      this.scene.add(post);
       
       // Create horizontal rails between posts
-      const railLength = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
+      const railLength = Math.sqrt((corner2.x - corner1.x) ** 2 + (corner2.z - corner1.z) ** 2);
       const railGeometry = new THREE.BoxGeometry(railLength, 0.1, 0.1);
       
       // Lower rail
       const lowerRail = new THREE.Mesh(railGeometry, railMaterial);
-      lowerRail.position.set((x1 + x2) / 2, fenceHeight * 0.3, (z1 + z2) / 2);
-      lowerRail.rotation.y = Math.atan2(z2 - z1, x2 - x1);
+      lowerRail.position.set((corner1.x + corner2.x) / 2, fenceHeight * 0.3, (corner1.z + corner2.z) / 2);
+      lowerRail.rotation.y = Math.atan2(corner2.z - corner1.z, corner2.x - corner1.x);
       lowerRail.castShadow = true;
       this.scene.add(lowerRail);
       
       // Upper rail
       const upperRail = new THREE.Mesh(railGeometry, railMaterial);
-      upperRail.position.set((x1 + x2) / 2, fenceHeight * 0.7, (z1 + z2) / 2);
-      upperRail.rotation.y = Math.atan2(z2 - z1, x2 - x1);
+      upperRail.position.set((corner1.x + corner2.x) / 2, fenceHeight * 0.7, (corner1.z + corner2.z) / 2);
+      upperRail.rotation.y = Math.atan2(corner2.z - corner1.z, corner2.x - corner1.x);
       upperRail.castShadow = true;
       this.scene.add(upperRail);
     }
