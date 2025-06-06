@@ -4,6 +4,7 @@ import GrassField from './GrassField.js';
 import PoopModel from './PoopModel.js';
 import BigPoopModel from './BigPoopModel.js';
 import SoundManager from './SoundManager.js';
+import MobileControls from './MobileControls.js';
 
 export default class Game {
   constructor(networkManager, playerId) {
@@ -62,6 +63,9 @@ export default class Game {
     // Skybox and clouds
     this.clouds = [];
     this.skyTime = 0;
+    
+    // Mobile controls
+    this.mobileControls = null;
   }
 
   initialize(gameData) {
@@ -771,6 +775,9 @@ export default class Game {
     // Pointer lock
     document.addEventListener('pointerlockchange', () => this.onPointerLockChange());
     
+    // Initialize mobile controls
+    this.mobileControls = new MobileControls(this);
+    
     console.log('🎮 Controls setup complete');
   }
 
@@ -1254,6 +1261,11 @@ export default class Game {
     console.log('🎮 Local player:', this.localPlayer ? 'Found' : 'Not found');
     console.log('🎮 Keys object:', this.keys);
     
+    // Show mobile controls if on mobile
+    if (this.mobileControls) {
+      this.mobileControls.showControls();
+    }
+    
     // Start ambient sounds
     if (this.soundManager) {
       this.soundManager.startAmbientSound();
@@ -1270,6 +1282,11 @@ export default class Game {
       this.updateMovement(deltaTime);
       this.updateCamera();
       this.updateSky(deltaTime);
+      
+      // Update mobile controls
+      if (this.mobileControls) {
+        this.mobileControls.update(deltaTime);
+      }
       
       // Update dog animations
       this.players.forEach(player => {
@@ -1307,6 +1324,11 @@ export default class Game {
     // Clean up sound manager
     if (this.soundManager) {
       this.soundManager.dispose();
+    }
+    
+    // Clean up mobile controls
+    if (this.mobileControls) {
+      this.mobileControls.destroy();
     }
     
     // Clean up Three.js resources

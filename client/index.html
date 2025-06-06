@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
     <title>🐕 Dog Cleanup Battle</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Inter:wght@400;500;600&display=swap');
@@ -376,25 +376,136 @@
             to { opacity: 1; transform: scale(1.05); }
         }
 
+        /* Mobile Touch Controls */
+        #mobileControls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            z-index: 2000;
+            pointer-events: none;
+            display: none;
+        }
+
+        .mobile-joystick {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            pointer-events: auto;
+        }
+
+        .mobile-joystick-thumb {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease;
+        }
+
+        .mobile-action-buttons {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .mobile-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .mobile-btn:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0.95);
+        }
+
+        .mobile-btn.scoot-active {
+            background: rgba(255, 107, 107, 0.8);
+            border-color: #FFD700;
+        }
+
+        /* Mobile Camera Controls */
+        #mobileCameraArea {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 200px;
+            z-index: 1500;
+            pointer-events: auto;
+            display: none;
+        }
+
         /* Mobile optimizations */
         @media (max-width: 768px) {
-            #gameHUD, #gameStatus, #controls {
-                position: fixed;
-                width: calc(100% - 40px);
-                left: 20px;
+            body {
+                touch-action: none;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+            }
+
+            #mobileControls, #mobileCameraArea {
+                display: block;
+            }
+
+            #gameHUD {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                padding: 10px;
+                font-size: 0.9em;
             }
             
-            #gameHUD { top: 20px; }
-            #gameStatus { top: 120px; }
-            #controls { bottom: 20px; }
+            #gameStatus {
+                top: 100px;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                padding: 10px;
+            }
+            
+            #controls {
+                display: none; /* Hide keyboard controls on mobile */
+            }
             
             #mainMenu h1 {
-                font-size: 2.5em;
+                font-size: 2em;
             }
             
             #mainMenu {
                 padding: 20px;
-                width: calc(100% - 40px);
+                width: calc(100% - 20px);
+                left: 10px;
+                font-size: 0.9em;
             }
             
             .connected-players-section {
@@ -421,15 +532,61 @@
             }
             
             #gameLog {
-                bottom: 80px;
+                bottom: 220px;
                 right: 10px;
                 left: 10px;
                 max-width: none;
+                max-height: 100px;
             }
             
             .log-message {
                 font-size: 0.8em;
                 padding: 6px 10px;
+            }
+
+            #gameCanvas {
+                border-radius: 0;
+                width: 100vw !important;
+                height: 100vh !important;
+            }
+
+            #gameContainer {
+                padding: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #mainMenu h1 {
+                font-size: 1.8em;
+            }
+
+            #mainMenu {
+                padding: 15px;
+                font-size: 0.8em;
+            }
+
+            .mobile-joystick {
+                width: 80px;
+                height: 80px;
+                bottom: 15px;
+                left: 15px;
+            }
+
+            .mobile-joystick-thumb {
+                width: 30px;
+                height: 30px;
+            }
+
+            .mobile-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 1.2em;
+            }
+
+            .mobile-action-buttons {
+                bottom: 15px;
+                right: 15px;
+                gap: 10px;
             }
         }
     </style>
@@ -496,6 +653,23 @@
             <div id="winnerInfo"></div>
             <button id="playAgainBtn">🔄 Play Again</button>
         </div>
+
+        <!-- Mobile Touch Controls -->
+        <div id="mobileControls">
+            <!-- Virtual Joystick -->
+            <div id="mobileJoystick" class="mobile-joystick">
+                <div id="mobileJoystickThumb" class="mobile-joystick-thumb"></div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="mobile-action-buttons">
+                <div id="mobileScootBtn" class="mobile-btn" title="Scoot Mode">🛷</div>
+                <div id="mobilePoopBtn" class="mobile-btn" title="Poop">💩</div>
+            </div>
+        </div>
+
+        <!-- Mobile Camera Touch Area -->
+        <div id="mobileCameraArea"></div>
     </div>
     
     <script type="module" src="/src/js/main.js"></script>
