@@ -32,7 +32,8 @@ class GameApp {
       volumeSlider: document.getElementById('volumeSlider'),
       playersList: document.getElementById('playersList'),
       connectedPlayers: document.getElementById('connectedPlayers'),
-      readyBtn: document.getElementById('readyBtn')
+      readyBtn: document.getElementById('readyBtn'),
+      scootingIndicator: document.getElementById('scootingIndicator')
     };
 
     // Event listeners
@@ -97,13 +98,13 @@ class GameApp {
 
     this.networkManager.on('player_moved', data => {
       if (this.game) {
-        this.game.updateRemotePlayer(data.playerId, data.position, data.rotation);
+        this.game.updateRemotePlayer(data.playerId, data.position, data.rotation, data.isScooting);
       }
     });
 
     this.networkManager.on('grass_colored', data => {
       if (this.game) {
-        this.game.updateGrass(data.position, data.color, data.wasStolen);
+        this.game.updateGrass(data.position, data.color, data.wasStolen, data.actionType);
         this.updateScoreBoard(data.scores);
         
         // Show stealing notification

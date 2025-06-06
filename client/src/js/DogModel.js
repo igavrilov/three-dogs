@@ -7,6 +7,7 @@ export default class DogModel {
     this.animationTime = 0;
     this.isMoving = false;
     this.lastPosition = new THREE.Vector3();
+    this.isScooting = false;
     
     this.createDogGeometry();
     this.setupAnimations();
@@ -134,7 +135,11 @@ export default class DogModel {
     this.lastPosition.copy(currentPosition);
     
     if (this.isMoving) {
-      this.animateWalking();
+      if (this.isScooting) {
+        this.animateScooting();
+      } else {
+        this.animateWalking();
+      }
     } else {
       this.animateIdle();
     }
@@ -193,6 +198,56 @@ export default class DogModel {
     // More excited wagging when moving
     if (this.isMoving) {
       this.tail.rotation.z *= 1.5;
+    }
+  }
+
+  animateScooting() {
+    const scootSpeed = 4;
+    const scootTime = this.animationTime * scootSpeed;
+    
+    // Lower the dog's body (scooting position) and tilt back
+    this.body.position.y = 0.6 + Math.sin(scootTime * 2) * 0.03;
+    this.body.rotation.x = -0.3; // Tilt backward (sitting on hind legs)
+    
+    // Head position for scooting - keep head relatively level despite body tilt
+    this.head.position.y = 1.3 + Math.sin(scootTime * 2) * 0.02;
+    this.head.rotation.x = 0.2; // Compensate for body tilt to keep head level
+    
+    // Back legs sitting/dragging animation
+    this.legs.forEach((leg, index) => {
+      if (index >= 2) { // Back legs (indices 2 and 3) - sitting position
+        leg.position.y = this.originalPositions.legs[index].y - 0.3; // Lower for sitting
+        leg.rotation.x = 0.6; // More bent for sitting position
+      } else { // Front legs still supporting and walking
+        const legPhase = (index % 2) * Math.PI;
+        const bobAmount = 0.1; // Reduced movement since dog is sitting
+        const bobOffset = Math.sin(scootTime + legPhase) * bobAmount;
+        leg.position.y = this.originalPositions.legs[index].y + Math.abs(bobOffset);
+        leg.rotation.x = Math.sin(scootTime + legPhase) * 0.15; // Reduced front leg movement
+      }
+    });
+    
+    // More excited tail wagging when scooting
+    this.tail.rotation.z = Math.sin(scootTime * 2) * 0.8;
+    this.tail.rotation.x = 0.8; // Tail up high
+  }
+
+  setScootingMode(scooting) {
+    this.isScooting = scooting;
+    
+    if (!scooting) {
+      // Reset to normal position when not scooting
+      this.body.position.y = 1;
+      this.body.rotation.x = 0;
+      this.head.position.y = 1.5;
+      this.head.rotation.x = 0;
+      this.tail.rotation.x = 0.5;
+      
+      // Reset all legs
+      this.legs.forEach((leg, index) => {
+        leg.position.copy(this.originalPositions.legs[index]);
+        leg.rotation.x = 0;
+      });
     }
   }
 

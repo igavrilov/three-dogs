@@ -165,11 +165,12 @@ export default class NetworkManager {
     });
   }
 
-  sendPlayerMove(position, rotation) {
+  sendPlayerMove(position, rotation, isScooting = false) {
     this.send({
       type: 'player_move',
       position,
-      rotation
+      rotation,
+      isScooting
     });
   }
 

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import DogModel from './DogModel.js';
 import GrassField from './GrassField.js';
 import PoopModel from './PoopModel.js';
+import BigPoopModel from './BigPoopModel.js';
 import SoundManager from './SoundManager.js';
 
 export default class Game {
@@ -20,6 +21,8 @@ export default class Game {
     this.grassField = null;
     this.localPlayer = null;
     this.poopModels = new Map(); // Store poop models by tile position
+    this.pendingCleanupCells = new Map(); // Collect cells for batch cleanup processing
+    this.cleanupTimers = new Map(); // Timers for delayed cleanup processing
     this.soundManager = null;
     
     // Game state
@@ -38,12 +41,18 @@ export default class Game {
     
     // Movement
     this.moveSpeed = 5;
+    this.scootingSpeed = 2.5; // Slower when scooting
     this.lastMoveUpdate = 0;
     this.moveUpdateInterval = 50; // Send position updates every 50ms
     
     // Cleanup action
     this.lastCleanupTime = 0;
     this.cleanupCooldown = 500; // 500ms cooldown between cleanups
+    
+    // Scooting mechanic
+    this.isScooting = false;
+    this.lastScootTime = 0;
+    this.scootInterval = 200; // Color grass every 200ms while scooting
     
     // Movement tracking for footstep sounds
     this.lastFootstepTime = 0;
@@ -225,15 +234,26 @@ export default class Game {
     this.keys[event.code] = true;
     console.log('🎮 Key pressed:', event.code, 'Game started:', this.isGameStarted);
     
-    // Cleanup action
+    // Cleanup action (regular poop - 4 cells)
     if (event.code === 'Space' && this.isGameStarted) {
       event.preventDefault();
       this.performCleanup();
+    }
+    
+    // Toggle scooting mode
+    if (event.code === 'ShiftLeft' && this.isGameStarted) {
+      event.preventDefault();
+      this.toggleScooting();
     }
   }
 
   onKeyUp(event) {
     this.keys[event.code] = false;
+    
+    // Stop scooting when shift is released
+    if (event.code === 'ShiftLeft') {
+      this.stopScooting();
+    }
   }
 
   onMouseMove(event) {
@@ -275,7 +295,67 @@ export default class Game {
         this.localPlayer.dog.performCleanupAnimation();
       }
       
+      // Send regular cleanup action (4 cells)
       this.networkManager.sendPlayerAction('cleanup', {
+        x: position.x,
+        y: position.y,
+        z: position.z
+      });
+    }
+  }
+
+  toggleScooting() {
+    this.isScooting = !this.isScooting;
+    console.log('🛷 Scooting mode:', this.isScooting ? 'ON' : 'OFF');
+    
+    // Visual feedback
+    if (this.localPlayer && this.localPlayer.dog.setScootingMode) {
+      this.localPlayer.dog.setScootingMode(this.isScooting);
+    }
+    
+    // Update UI indicator
+    this.updateScootingIndicator();
+  }
+
+  stopScooting() {
+    if (this.isScooting) {
+      this.isScooting = false;
+      console.log('🛷 Stopped scooting');
+      
+      // Visual feedback
+      if (this.localPlayer && this.localPlayer.dog.setScootingMode) {
+        this.localPlayer.dog.setScootingMode(false);
+      }
+      
+      // Update UI indicator
+      this.updateScootingIndicator();
+    }
+  }
+
+  updateScootingIndicator() {
+    const indicator = document.getElementById('scootingIndicator');
+    if (indicator) {
+      if (this.isScooting) {
+        indicator.classList.remove('hidden');
+      } else {
+        indicator.classList.add('hidden');
+      }
+    }
+  }
+
+  performScootAction() {
+    const now = Date.now();
+    if (now - this.lastScootTime < this.scootInterval) {
+      return; // Too soon to scoot again
+    }
+    
+    this.lastScootTime = now;
+    
+    if (this.localPlayer) {
+      const { position } = this.localPlayer.dog;
+      
+      // Send scooting action (1 cell)
+      this.networkManager.sendPlayerAction('scoot', {
         x: position.x,
         y: position.y,
         z: position.z
@@ -328,9 +408,15 @@ export default class Game {
       finalDirection.addScaledVector(right, moveVector.x);
       finalDirection.normalize();
       
-      // Move the dog
-      const moveDistance = this.moveSpeed * deltaTime;
+      // Move the dog (use different speed based on scooting state)
+      const currentSpeed = this.isScooting ? this.scootingSpeed : this.moveSpeed;
+      const moveDistance = currentSpeed * deltaTime;
       dog.position.addScaledVector(finalDirection, moveDistance);
+      
+      // If scooting and moving, perform scoot action
+      if (this.isScooting) {
+        this.performScootAction();
+      }
       
       // Keep within bounds
       const bounds = 24; // Slightly smaller than world size
@@ -361,7 +447,8 @@ export default class Game {
             x: dog.rotation.x,
             y: dog.rotation.y,
             z: dog.rotation.z
-          }
+          },
+          this.isScooting
         );
         this.lastMoveUpdate = now;
       }
@@ -384,20 +471,28 @@ export default class Game {
     this.camera.lookAt(dog.position);
   }
 
-  updateRemotePlayer(playerId, position, rotation) {
+  updateRemotePlayer(playerId, position, rotation, isScooting = false) {
     const player = this.players.get(playerId);
     if (player && player.dog) {
       player.dog.position.set(position.x, position.y, position.z);
       player.dog.rotation.set(rotation.x, rotation.y, rotation.z);
+      
+      // Update scooting state for remote players
+      if (player.dog.setScootingMode) {
+        player.dog.setScootingMode(isScooting);
+      }
     }
   }
 
-  updateGrass(position, color, wasStolen = false) {
+  updateGrass(position, color, wasStolen = false, actionType = 'cleanup') {
     if (this.grassField) {
       this.grassField.colorTile(position.x, position.z, color);
       
-      // Add poop model at this position
-      this.addPoopModel(position, color);
+      // Handle poop creation based on action type
+      if (actionType === 'cleanup') {
+        this.handleCleanupCell(position, color);
+      }
+      // For scooting, no poop models are created
       
       // Play appropriate sound effect
       if (this.soundManager) {
@@ -410,32 +505,130 @@ export default class Game {
     }
   }
 
-  addPoopModel(tilePosition, color) {
-    const tileKey = `${tilePosition.x},${tilePosition.z}`;
+  handleCleanupCell(position, color) {
+    // Calculate the 2x2 area that this cell belongs to
+    const areaX = Math.floor(position.x / 2) * 2;
+    const areaZ = Math.floor(position.z / 2) * 2;
+    const areaKey = `${areaX},${areaZ}`;
     
-    // Remove existing poop model if it exists
-    if (this.poopModels.has(tileKey)) {
-      const existingPoop = this.poopModels.get(tileKey);
-      this.scene.remove(existingPoop.mesh);
-      existingPoop.dispose();
-      this.poopModels.delete(tileKey);
+    // Initialize or update the pending cleanup for this area
+    if (!this.pendingCleanupCells.has(areaKey)) {
+      this.pendingCleanupCells.set(areaKey, {
+        cells: new Set(),
+        color: color,
+        areaX: areaX,
+        areaZ: areaZ
+      });
     }
     
-    // Create new poop model
-    const poopSize = 0.8 + Math.random() * 0.4; // Random size between 0.8 and 1.2
-    const poop = new PoopModel(color, poopSize);
+    const cleanupData = this.pendingCleanupCells.get(areaKey);
+    cleanupData.cells.add(`${position.x},${position.z}`);
     
-    // Position the poop at the center of the tile
-    const worldX = tilePosition.x;
-    const worldZ = tilePosition.z;
-    poop.setPosition(worldX, 0.1, worldZ);
+    // Clear any existing timer for this area
+    if (this.cleanupTimers.has(areaKey)) {
+      clearTimeout(this.cleanupTimers.get(areaKey));
+    }
     
-    // Add to scene and store reference
+    // Set a short delay to collect all 4 cells before creating the poop
+    const timer = setTimeout(() => {
+      this.processCleanupArea(areaKey);
+    }, 100); // 100ms delay to collect all cells
+    
+    this.cleanupTimers.set(areaKey, timer);
+  }
+
+  processCleanupArea(areaKey) {
+    const cleanupData = this.pendingCleanupCells.get(areaKey);
+    if (!cleanupData) return;
+    
+    // Check if we have multiple cells (indicating a 4-cell cleanup)
+    if (cleanupData.cells.size >= 2) {
+      // Create one big poop for the area
+      this.createBigPoop(cleanupData.areaX, cleanupData.areaZ, cleanupData.color);
+    } else {
+      // Single cell - create small poop (for edge cases)
+      const cellKey = Array.from(cleanupData.cells)[0];
+      const [x, z] = cellKey.split(',').map(Number);
+      this.createSmallPoop(x, z, cleanupData.color);
+    }
+    
+    // Clean up
+    this.pendingCleanupCells.delete(areaKey);
+    this.cleanupTimers.delete(areaKey);
+  }
+
+  createBigPoop(areaX, areaZ, color) {
+    const centerX = areaX + 1.0;
+    const centerZ = areaZ + 1.0;
+    const poopKey = `big_${centerX},${centerZ}`;
+    
+    // Remove any existing poops in this area
+    this.removePoopsInArea(areaX, areaZ);
+    
+    // Create the big poop model
+    const bigPoop = new BigPoopModel(color);
+    bigPoop.setPosition(centerX, 0.1, centerZ);
+    
+    // Add to scene and store
+    this.scene.add(bigPoop.mesh);
+    this.poopModels.set(poopKey, bigPoop);
+    
+    // Animate appearance
+    bigPoop.animateAppearance();
+  }
+
+  createSmallPoop(x, z, color) {
+    const poopKey = `${x},${z}`;
+    
+    // Remove existing poop if it exists
+    if (this.poopModels.has(poopKey)) {
+      const existingPoop = this.poopModels.get(poopKey);
+      this.scene.remove(existingPoop.mesh);
+      existingPoop.dispose();
+      this.poopModels.delete(poopKey);
+    }
+    
+    // Create small poop model
+    const poop = new PoopModel(color, 0.8 + Math.random() * 0.4);
+    poop.setPosition(x, 0.1, z);
+    
+    // Add to scene and store
     this.scene.add(poop.mesh);
-    this.poopModels.set(tileKey, poop);
+    this.poopModels.set(poopKey, poop);
     
-    // Animate the poop appearance
+    // Animate appearance
     poop.animateAppearance();
+  }
+
+  removePoopsInArea(areaX, areaZ) {
+    // Remove any existing poops in the 2x2 area
+    const positions = [
+      { x: areaX, z: areaZ },
+      { x: areaX + 1, z: areaZ },
+      { x: areaX, z: areaZ + 1 },
+      { x: areaX + 1, z: areaZ + 1 }
+    ];
+    
+    positions.forEach(pos => {
+      const key = `${pos.x},${pos.z}`;
+      if (this.poopModels.has(key)) {
+        const existingPoop = this.poopModels.get(key);
+        this.scene.remove(existingPoop.mesh);
+        existingPoop.dispose();
+        this.poopModels.delete(key);
+      }
+    });
+    
+    // Also remove any existing big poop for this area
+    const centerX = areaX + 1.0;
+    const centerZ = areaZ + 1.0;
+    const bigPoopKey = `big_${centerX},${centerZ}`;
+    if (this.poopModels.has(bigPoopKey)) {
+      const existingPoop = this.poopModels.get(bigPoopKey);
+      this.scene.remove(existingPoop.mesh);
+      existingPoop.dispose();
+      this.poopModels.delete(bigPoopKey);
+    }
   }
 
   startGame() {
@@ -491,6 +684,11 @@ export default class Game {
   }
 
   destroy() {
+    // Clean up timers
+    this.cleanupTimers.forEach(timer => clearTimeout(timer));
+    this.cleanupTimers.clear();
+    this.pendingCleanupCells.clear();
+    
     // Clean up poop models
     this.poopModels.forEach(poop => {
       this.scene.remove(poop.mesh);

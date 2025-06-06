@@ -340,6 +340,25 @@
         .ready-btn.already-ready {
             background: linear-gradient(45deg, #FF9800, #F57C00) !important;
         }
+        
+        /* Scooting Indicator */
+        .scooting-indicator {
+            background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-top: 10px;
+            text-align: center;
+            border: 2px solid #FFD700;
+            animation: scootPulse 1s ease-in-out infinite alternate;
+        }
+        
+        @keyframes scootPulse {
+            from { opacity: 0.8; transform: scale(1); }
+            to { opacity: 1; transform: scale(1.05); }
+        }
 
         /* Mobile optimizations */
         @media (max-width: 768px) {
@@ -431,13 +450,15 @@
         <div id="gameStatus" class="ui-overlay hidden">
             <div id="gameTimer" class="timer">2:00</div>
             <div id="gamePhase">Waiting...</div>
+            <div id="scootingIndicator" class="scooting-indicator hidden">🛷 SCOOTING MODE</div>
         </div>
         
         <!-- Controls -->
         <div id="controls" class="ui-overlay hidden">
             <h4>🎮 Controls</h4>
             <div class="control-item">WASD / Arrow Keys: Move</div>
-            <div class="control-item">Space: Clean up</div>
+            <div class="control-item">Space: Poop (4 cells)</div>
+            <div class="control-item">Left Shift: Scoot (1 cell, slower)</div>
             <div class="control-item">Mouse: Look around</div>
             <div class="control-item">
                 <label for="volumeSlider">🔊 Volume:</label>

@@ -152,13 +152,17 @@ function handleJoinGame(ws, message) {
 
 function handlePlayerMove(ws, message) {
   if (ws.gameRoom) {
-    ws.gameRoom.updatePlayerPosition(ws.playerId, message.position, message.rotation);
+    ws.gameRoom.updatePlayerPosition(ws.playerId, message.position, message.rotation, message.isScooting);
   }
 }
 
 function handlePlayerAction(ws, message) {
-  if (ws.gameRoom && message.action === 'cleanup') {
-    ws.gameRoom.handleCleanupAction(ws.playerId, message.position);
+  if (ws.gameRoom) {
+    if (message.action === 'cleanup') {
+      ws.gameRoom.handleCleanupAction(ws.playerId, message.position, 4); // Regular poop: 4 cells
+    } else if (message.action === 'scoot') {
+      ws.gameRoom.handleCleanupAction(ws.playerId, message.position, 1); // Scooting: 1 cell
+    }
   }
 }
 

@@ -238,72 +238,104 @@ export default class GameRoom {
     console.log(`🏁 Game ended in room ${this.roomId}. Winner: ${winner?.name || 'None'}`);
   }
 
-  updatePlayerPosition(playerId, position, rotation) {
+  updatePlayerPosition(playerId, position, rotation, isScooting = false) {
     const player = this.players.get(playerId);
     if (!player) return;
     
     player.position = position;
     player.rotation = rotation;
+    player.isScooting = isScooting;
     
     // Broadcast position update to other players
     this.broadcastToRoom({
       type: 'player_moved',
       playerId,
       position,
-      rotation
+      rotation,
+      isScooting
     }, playerId);
   }
 
-  handleCleanupAction(playerId, position) {
+  handleCleanupAction(playerId, position, cellCount = 1) {
     if (this.gameState !== 'playing') return;
     
     const player = this.players.get(playerId);
     if (!player) return;
     
-    // Calculate grass tile position
-    const grassX = Math.floor(position.x / this.grassGridSize);
-    const grassZ = Math.floor(position.z / this.grassGridSize);
-    const grassKey = `${grassX},${grassZ}`;
+    // Calculate center grass tile position
+    const centerX = Math.floor(position.x / this.grassGridSize);
+    const centerZ = Math.floor(position.z / this.grassGridSize);
     
-    // Check if position is within world bounds
-    if (Math.abs(grassX) > this.worldSize.x / 2 || 
-        Math.abs(grassZ) > this.worldSize.z / 2) {
-      return;
-    }
+    // Generate positions based on cell count
+    const positions = this.getCleanupPositions(centerX, centerZ, cellCount);
+    let totalNewCells = 0;
     
-    // Always allow coloring - players can steal territory from others!
-    const currentOwner = this.grassMap.get(grassKey);
-    let wasStolen = false;
-    let previousOwnerName = null;
-    
-    // Remove score from previous owner if exists and it's not the same player
-    if (currentOwner && currentOwner !== playerId) {
-      const prevPlayer = this.players.get(currentOwner);
-      if (prevPlayer) {
-        prevPlayer.score = Math.max(0, prevPlayer.score - 1);
-        wasStolen = true;
-        previousOwnerName = prevPlayer.name;
-      }
-    }
-    
-    // Only add score if this is a new tile or stolen from another player
-    if (!currentOwner || currentOwner !== playerId) {
-      this.grassMap.set(grassKey, playerId);
-      player.score += 1;
+    positions.forEach(pos => {
+      const { x: grassX, z: grassZ } = pos;
+      const grassKey = `${grassX},${grassZ}`;
       
-      // Broadcast the grass update with steal information
-      this.broadcastToRoom({
-        type: 'grass_colored',
-        position: { x: grassX, z: grassZ },
-        playerId,
-        color: player.color,
-        scores: this.getCurrentScores(),
-        wasStolen,
-        previousOwner: currentOwner,
-        previousOwnerName,
-        playerName: player.name
-      });
+      // Check if position is within world bounds
+      if (Math.abs(grassX) > this.worldSize.x / 2 || 
+          Math.abs(grassZ) > this.worldSize.z / 2) {
+        return;
+      }
+      
+      // Always allow coloring - players can steal territory from others!
+      const currentOwner = this.grassMap.get(grassKey);
+      let wasStolen = false;
+      let previousOwnerName = null;
+      
+      // Remove score from previous owner if exists and it's not the same player
+      if (currentOwner && currentOwner !== playerId) {
+        const prevPlayer = this.players.get(currentOwner);
+        if (prevPlayer) {
+          prevPlayer.score = Math.max(0, prevPlayer.score - 1);
+          wasStolen = true;
+          previousOwnerName = prevPlayer.name;
+        }
+      }
+      
+      // Only add score if this is a new tile or stolen from another player
+      if (!currentOwner || currentOwner !== playerId) {
+        this.grassMap.set(grassKey, playerId);
+        totalNewCells++;
+        
+        // Broadcast the grass update with steal information
+        this.broadcastToRoom({
+          type: 'grass_colored',
+          position: { x: grassX, z: grassZ },
+          playerId,
+          color: player.color,
+          scores: this.getCurrentScores(),
+          wasStolen,
+          previousOwner: currentOwner,
+          previousOwnerName,
+          playerName: player.name,
+          actionType: cellCount === 1 ? 'scoot' : 'cleanup'
+        });
+      }
+    });
+    
+    // Add score for new cells
+    player.score += totalNewCells;
+  }
+
+  getCleanupPositions(centerX, centerZ, cellCount) {
+    if (cellCount === 1) {
+      // Scooting: just the center position
+      return [{ x: centerX, z: centerZ }];
+    } else if (cellCount === 4) {
+      // Regular poop: 2x2 area
+      return [
+        { x: centerX, z: centerZ },
+        { x: centerX + 1, z: centerZ },
+        { x: centerX, z: centerZ + 1 },
+        { x: centerX + 1, z: centerZ + 1 }
+      ];
     }
+    
+    // Default: single cell
+    return [{ x: centerX, z: centerZ }];
   }
 
   getCurrentScores() {
