@@ -136,7 +136,13 @@ export default class Game {
     this.grassField = new GrassField(50, 50);
     this.scene.add(this.grassField.mesh);
     
-    // Add some decorative elements
+    // Add fence around the play area
+    this.createFence();
+    
+    // Add distant landscape beyond the fence
+    this.createDistantLandscape();
+    
+    // Add some decorative elements within the play area
     this.addDecorations();
   }
 
@@ -337,53 +343,273 @@ export default class Game {
     }
   }
 
-  addDecorations() {
-    // Add some trees around the field
-    const treeGeometry = new THREE.ConeGeometry(1, 4, 8);
-    const treeMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+  createFence() {
+    const fenceHeight = 1.5;
+    const fencePostRadius = 0.1;
+    const fenceDistance = 28; // Distance from center
     
-    const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.3, 2);
-    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    // Fence post material
+    const postMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const railMaterial = new THREE.MeshLambertMaterial({ color: 0xA0522D });
+    
+    // Create fence around the perimeter
+    const perimeter = 8; // Number of sides for octagonal fence
+    for (let i = 0; i < perimeter; i++) {
+      const angle1 = (i / perimeter) * Math.PI * 2;
+      const angle2 = ((i + 1) / perimeter) * Math.PI * 2;
+      
+      const x1 = Math.cos(angle1) * fenceDistance;
+      const z1 = Math.sin(angle1) * fenceDistance;
+      const x2 = Math.cos(angle2) * fenceDistance;
+      const z2 = Math.sin(angle2) * fenceDistance;
+      
+      // Create fence posts at corners
+      const postGeometry = new THREE.CylinderGeometry(fencePostRadius, fencePostRadius, fenceHeight);
+      const post1 = new THREE.Mesh(postGeometry, postMaterial);
+      post1.position.set(x1, fenceHeight / 2, z1);
+      post1.castShadow = true;
+      this.scene.add(post1);
+      
+      // Create horizontal rails between posts
+      const railLength = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
+      const railGeometry = new THREE.BoxGeometry(railLength, 0.1, 0.1);
+      
+      // Lower rail
+      const lowerRail = new THREE.Mesh(railGeometry, railMaterial);
+      lowerRail.position.set((x1 + x2) / 2, fenceHeight * 0.3, (z1 + z2) / 2);
+      lowerRail.rotation.y = Math.atan2(z2 - z1, x2 - x1);
+      lowerRail.castShadow = true;
+      this.scene.add(lowerRail);
+      
+      // Upper rail
+      const upperRail = new THREE.Mesh(railGeometry, railMaterial);
+      upperRail.position.set((x1 + x2) / 2, fenceHeight * 0.7, (z1 + z2) / 2);
+      upperRail.rotation.y = Math.atan2(z2 - z1, x2 - x1);
+      upperRail.castShadow = true;
+      this.scene.add(upperRail);
+    }
+  }
+
+  createDistantLandscape() {
+    // Create a distant river
+    this.createRiver();
+    
+    // Create a distant house
+    this.createHouse();
+    
+    // Create distant forest
+    this.createDistantForest();
+    
+    // Create hills
+    this.createHills();
+    
+    // Create distant fields
+    this.createDistantFields();
+    
+    // Create a distant barn
+    this.createBarn();
+  }
+
+  createRiver() {
+    const riverGeometry = new THREE.PlaneGeometry(200, 8);
+    const riverMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x4169E1,
+      transparent: true,
+      opacity: 0.8 
+    });
+    
+    const river = new THREE.Mesh(riverGeometry, riverMaterial);
+    river.rotation.x = -Math.PI / 2;
+    river.position.set(60, 0.05, -40);
+    river.receiveShadow = true;
+    this.scene.add(river);
+    
+    console.log('🏊 River created');
+  }
+
+  createHouse() {
+    // House base
+    const houseGeometry = new THREE.BoxGeometry(8, 6, 10);
+    const houseMaterial = new THREE.MeshLambertMaterial({ color: 0xDEB887 });
+    const house = new THREE.Mesh(houseGeometry, houseMaterial);
+    house.position.set(-50, 3, 40);
+    house.castShadow = true;
+    this.scene.add(house);
+    
+    // Roof
+    const roofGeometry = new THREE.ConeGeometry(7, 4, 4);
+    const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.set(-50, 8, 40);
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true;
+    this.scene.add(roof);
+    
+    // Chimney
+    const chimneyGeometry = new THREE.BoxGeometry(1, 3, 1);
+    const chimneyMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+    const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
+    chimney.position.set(-48, 9, 42);
+    chimney.castShadow = true;
+    this.scene.add(chimney);
+    
+    console.log('🏠 House created');
+  }
+
+  createDistantForest() {
+    // Create a line of trees in the background
+    for (let i = 0; i < 20; i++) {
+      const treeHeight = 15 + Math.random() * 10;
+      const treeRadius = 3 + Math.random() * 2;
+      
+      // Tree trunk
+      const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, treeHeight * 0.3);
+      const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      
+      // Tree foliage
+      const foliageGeometry = new THREE.ConeGeometry(treeRadius, treeHeight * 0.7, 8);
+      const foliageMaterial = new THREE.MeshLambertMaterial({ 
+        color: new THREE.Color().setHSL(0.3, 0.7, 0.3 + Math.random() * 0.2) 
+      });
+      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+      
+      // Position trees in the distance
+      const x = -80 + i * 8 + (Math.random() - 0.5) * 4;
+      const z = 70 + (Math.random() - 0.5) * 20;
+      
+      trunk.position.set(x, treeHeight * 0.15, z);
+      foliage.position.set(x, treeHeight * 0.5, z);
+      
+      trunk.castShadow = true;
+      foliage.castShadow = true;
+      
+      this.scene.add(trunk);
+      this.scene.add(foliage);
+    }
+    
+    console.log('🌲 Distant forest created');
+  }
+
+  createHills() {
+    // Create rolling hills in the background
+    for (let i = 0; i < 5; i++) {
+      const hillGeometry = new THREE.SphereGeometry(20 + Math.random() * 15, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+      const hillMaterial = new THREE.MeshLambertMaterial({ 
+        color: new THREE.Color().setHSL(0.25, 0.6, 0.4 + Math.random() * 0.2) 
+      });
+      const hill = new THREE.Mesh(hillGeometry, hillMaterial);
+      
+      hill.position.set(
+        (Math.random() - 0.5) * 200,
+        -5,
+        80 + Math.random() * 40
+      );
+      hill.receiveShadow = true;
+      this.scene.add(hill);
+    }
+    
+    console.log('⛰️ Hills created');
+  }
+
+  createDistantFields() {
+    // Create different colored field patches
+    const fieldColors = [0x90EE90, 0xFFFF99, 0xDEB887, 0x98FB98];
     
     for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const distance = 30;
-      const x = Math.cos(angle) * distance;
-      const z = Math.sin(angle) * distance;
+      const fieldGeometry = new THREE.PlaneGeometry(
+        15 + Math.random() * 10,
+        15 + Math.random() * 10
+      );
+      const fieldMaterial = new THREE.MeshLambertMaterial({ 
+        color: fieldColors[Math.floor(Math.random() * fieldColors.length)] 
+      });
+      const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
       
-      // Trunk
-      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-      trunk.position.set(x, 1, z);
-      trunk.castShadow = true;
-      this.scene.add(trunk);
-      
-      // Tree top
-      const tree = new THREE.Mesh(treeGeometry, treeMaterial);
-      tree.position.set(x, 4, z);
-      tree.castShadow = true;
-      this.scene.add(tree);
+      field.rotation.x = -Math.PI / 2;
+      field.position.set(
+        (Math.random() - 0.5) * 120,
+        0.02,
+        50 + Math.random() * 30
+      );
+      field.receiveShadow = true;
+      this.scene.add(field);
     }
     
-    // Add some rocks
-    const rockGeometry = new THREE.DodecahedronGeometry(0.5);
-    const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+    console.log('🌾 Distant fields created');
+  }
+
+  createBarn() {
+    // Barn base
+    const barnGeometry = new THREE.BoxGeometry(12, 8, 8);
+    const barnMaterial = new THREE.MeshLambertMaterial({ color: 0xB22222 });
+    const barn = new THREE.Mesh(barnGeometry, barnMaterial);
+    barn.position.set(45, 4, 55);
+    barn.castShadow = true;
+    this.scene.add(barn);
     
-    for (let i = 0; i < 12; i++) {
-      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-      rock.position.set(
-        (Math.random() - 0.5) * 40,
-        0.25,
-        (Math.random() - 0.5) * 40
-      );
-      rock.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      );
-      rock.castShadow = true;
-      rock.receiveShadow = true;
-      this.scene.add(rock);
-    }
+    // Barn roof
+    const roofGeometry = new THREE.BoxGeometry(14, 3, 10);
+    const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.set(45, 9.5, 55);
+    roof.castShadow = true;
+    this.scene.add(roof);
+    
+    console.log('🚜 Barn created');
+  }
+
+  addDecorations() {
+    // Add some small decorative elements within the fenced area
+    const decorations = [
+      { type: 'rock', count: 8 },
+      { type: 'flower', count: 12 },
+      { type: 'bush', count: 6 }
+    ];
+    
+    decorations.forEach(({ type, count }) => {
+      for (let i = 0; i < count; i++) {
+        let decoration;
+        
+        switch (type) {
+          case 'rock':
+            decoration = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.3),
+              new THREE.MeshLambertMaterial({ color: 0x696969 })
+            );
+            break;
+            
+          case 'flower':
+            decoration = new THREE.Mesh(
+              new THREE.SphereGeometry(0.2, 8, 8),
+              new THREE.MeshLambertMaterial({ 
+                color: new THREE.Color().setHSL(Math.random(), 0.8, 0.6) 
+              })
+            );
+            break;
+            
+          case 'bush':
+            decoration = new THREE.Mesh(
+              new THREE.SphereGeometry(0.8 + Math.random() * 0.4, 8, 8),
+              new THREE.MeshLambertMaterial({ color: 0x228B22 })
+            );
+            break;
+        }
+        
+        // Position within the fenced area
+        decoration.position.set(
+          (Math.random() - 0.5) * 50,
+          decoration.geometry.parameters?.radius || 0.3,
+          (Math.random() - 0.5) * 50
+        );
+        
+        decoration.castShadow = true;
+        decoration.receiveShadow = true;
+        this.scene.add(decoration);
+      }
+    });
+    
+    console.log('🌸 Decorations added within fence');
   }
 
   setupPlayers(playersData) {
