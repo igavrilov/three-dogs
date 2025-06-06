@@ -24,6 +24,7 @@ export default class Game {
     this.pendingCleanupCells = new Map(); // Collect cells for batch cleanup processing
     this.cleanupTimers = new Map(); // Timers for delayed cleanup processing
     this.soundManager = null;
+    this.bushes = []; // Store bush objects for collision detection
     
     // Game state
     this.isGameStarted = false;
@@ -306,13 +307,7 @@ export default class Game {
       this.scene.add(cloud);
     }
     
-    // Add a simple test cloud (white box) to make sure we can see SOMETHING
-    const testCloudGeometry = new THREE.BoxGeometry(5, 2, 3);
-    const testCloudMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const testCloud = new THREE.Mesh(testCloudGeometry, testCloudMaterial);
-    testCloud.position.set(10, 12, 5);
-    this.scene.add(testCloud);
-    console.log('🧪 Test cloud (white box) created at:', testCloud.position);
+    // Test cloud removed - no longer needed
     
     // Add clouds visible from current camera angle (on the horizon)
     for (let i = 0; i < 3; i++) {
@@ -493,24 +488,135 @@ export default class Game {
   }
 
   createHills() {
-    // Create rolling hills in the background
-    for (let i = 0; i < 5; i++) {
-      const hillGeometry = new THREE.SphereGeometry(20 + Math.random() * 15, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-      const hillMaterial = new THREE.MeshLambertMaterial({ 
-        color: new THREE.Color().setHSL(0.25, 0.6, 0.4 + Math.random() * 0.2) 
-      });
-      const hill = new THREE.Mesh(hillGeometry, hillMaterial);
+    // Create mountain ranges on all sides of the landscape
+    this.createMountainRange('north');
+    this.createMountainRange('south'); 
+    this.createMountainRange('east');
+    this.createMountainRange('west');
+    
+    // Add closer foothills for better transition
+    this.createFoothills();
+    
+    console.log('⛰️ Mountain ranges created on all sides');
+  }
+
+  createMountainRange(direction) {
+    const mountainCount = 8 + Math.random() * 4; // 8-12 mountains per side
+    const baseDistance = 120; // Distance from center
+    
+    for (let i = 0; i < mountainCount; i++) {
+      // Create varying mountain sizes
+      const mountainHeight = 25 + Math.random() * 35; // 25-60 units tall
+      const mountainRadius = 15 + Math.random() * 20; // 15-35 units wide
       
-      hill.position.set(
-        (Math.random() - 0.5) * 200,
-        -5,
-        80 + Math.random() * 40
+      // Create mountain geometry (half sphere for natural look)
+      const mountainGeometry = new THREE.SphereGeometry(
+        mountainRadius, 
+        16, 
+        8, 
+        0, 
+        Math.PI * 2, 
+        0, 
+        Math.PI / 2
       );
-      hill.receiveShadow = true;
-      this.scene.add(hill);
+      
+      // Vary mountain colors (different shades of green/brown)
+      const mountainMaterial = new THREE.MeshLambertMaterial({ 
+        color: new THREE.Color().setHSL(
+          0.2 + Math.random() * 0.15, // Green to brown hues
+          0.4 + Math.random() * 0.3,  // Varied saturation
+          0.3 + Math.random() * 0.3   // Varied lightness
+        )
+      });
+      
+      const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+      
+      // Position mountains based on direction
+      let x, z;
+      switch (direction) {
+        case 'north':
+          x = -100 + (i / mountainCount) * 200 + (Math.random() - 0.5) * 30;
+          z = baseDistance + Math.random() * 40;
+          break;
+        case 'south':
+          x = -100 + (i / mountainCount) * 200 + (Math.random() - 0.5) * 30;
+          z = -baseDistance - Math.random() * 40;
+          break;
+        case 'east':
+          x = baseDistance + Math.random() * 40;
+          z = -100 + (i / mountainCount) * 200 + (Math.random() - 0.5) * 30;
+          break;
+        case 'west':
+          x = -baseDistance - Math.random() * 40;
+          z = -100 + (i / mountainCount) * 200 + (Math.random() - 0.5) * 30;
+          break;
+      }
+      
+      mountain.position.set(x, -mountainRadius * 0.3, z);
+      mountain.receiveShadow = true;
+      mountain.castShadow = true;
+      this.scene.add(mountain);
+      
+      // Add some taller peaks randomly
+      if (Math.random() < 0.3) {
+        const peak = new THREE.Mesh(
+          new THREE.ConeGeometry(mountainRadius * 0.6, mountainHeight * 0.4, 8),
+          new THREE.MeshLambertMaterial({ 
+            color: new THREE.Color().setHSL(0.15, 0.3, 0.4) // Rocky peak color
+          })
+        );
+        peak.position.set(x, mountainHeight * 0.4, z);
+        peak.castShadow = true;
+        this.scene.add(peak);
+      }
     }
     
-    console.log('⛰️ Hills created');
+    console.log(`🏔️ ${direction} mountain range created`);
+  }
+
+  createFoothills() {
+    // Create smaller hills closer to the play area for better visual transition
+    const foothillCount = 15;
+    const minDistance = 70; // Closer to the play area
+    const maxDistance = 100;
+    
+    for (let i = 0; i < foothillCount; i++) {
+      const foothillHeight = 8 + Math.random() * 15; // Smaller than mountains
+      const foothillRadius = 8 + Math.random() * 12;
+      
+      const foothillGeometry = new THREE.SphereGeometry(
+        foothillRadius, 
+        12, 
+        6, 
+        0, 
+        Math.PI * 2, 
+        0, 
+        Math.PI / 2
+      );
+      
+      const foothillMaterial = new THREE.MeshLambertMaterial({ 
+        color: new THREE.Color().setHSL(
+          0.25 + Math.random() * 0.1, // More green than mountains
+          0.5 + Math.random() * 0.2,
+          0.4 + Math.random() * 0.2
+        )
+      });
+      
+      const foothill = new THREE.Mesh(foothillGeometry, foothillMaterial);
+      
+      // Position foothills in a ring around the play area
+      const angle = (i / foothillCount) * Math.PI * 2;
+      const distance = minDistance + Math.random() * (maxDistance - minDistance);
+      const x = Math.cos(angle) * distance + (Math.random() - 0.5) * 20;
+      const z = Math.sin(angle) * distance + (Math.random() - 0.5) * 20;
+      
+      foothill.position.set(x, -foothillRadius * 0.4, z);
+      foothill.receiveShadow = true;
+      foothill.castShadow = true;
+      this.scene.add(foothill);
+    }
+    
+    console.log('🌄 Foothills created for smooth transition');
   }
 
   createDistantFields() {
@@ -590,10 +696,16 @@ export default class Game {
             break;
             
           case 'bush':
+            const bushRadius = 0.8 + Math.random() * 0.4;
             decoration = new THREE.Mesh(
-              new THREE.SphereGeometry(0.8 + Math.random() * 0.4, 8, 8),
+              new THREE.SphereGeometry(bushRadius, 8, 8),
               new THREE.MeshLambertMaterial({ color: 0x228B22 })
             );
+            // Store collision radius
+            decoration.userData = { 
+              type: 'bush', 
+              collisionRadius: bushRadius + 0.3 // Slightly larger for collision
+            };
             break;
         }
         
@@ -607,6 +719,11 @@ export default class Game {
         decoration.castShadow = true;
         decoration.receiveShadow = true;
         this.scene.add(decoration);
+        
+        // Store bushes for collision detection
+        if (type === 'bush') {
+          this.bushes.push(decoration);
+        }
       }
     });
     
@@ -841,14 +958,35 @@ export default class Game {
       finalDirection.addScaledVector(right, moveVector.x);
       finalDirection.normalize();
       
-      // Move the dog (use different speed based on scooting state)
+      // Calculate intended new position
       const currentSpeed = this.isScooting ? this.scootingSpeed : this.moveSpeed;
       const moveDistance = currentSpeed * deltaTime;
-      dog.position.addScaledVector(finalDirection, moveDistance);
+      const intendedPosition = dog.position.clone();
+      intendedPosition.addScaledVector(finalDirection, moveDistance);
       
-      // If scooting and moving, perform scoot action
-      if (this.isScooting) {
-        this.performScootAction();
+      // Check collision with bushes
+      const dogCollisionRadius = 0.6; // Dog's collision radius
+      let canMove = true;
+      
+      for (const bush of this.bushes) {
+        const distance = intendedPosition.distanceTo(bush.position);
+        const minDistance = dogCollisionRadius + bush.userData.collisionRadius;
+        
+        if (distance < minDistance) {
+          canMove = false;
+          console.log('🌿 Collision with bush detected!');
+          break;
+        }
+      }
+      
+      // Only move if no collision detected
+      if (canMove) {
+        dog.position.copy(intendedPosition);
+        
+        // If scooting and moving, perform scoot action
+        if (this.isScooting) {
+          this.performScootAction();
+        }
       }
       
       // Keep within bounds
@@ -933,7 +1071,27 @@ export default class Game {
   updateRemotePlayer(playerId, position, rotation, isScooting = false) {
     const player = this.players.get(playerId);
     if (player && player.dog) {
-      player.dog.position.set(position.x, position.y, position.z);
+      // Check if the remote player's position would collide with bushes
+      const intendedPosition = new THREE.Vector3(position.x, position.y, position.z);
+      const dogCollisionRadius = 0.6;
+      let canMove = true;
+      
+      for (const bush of this.bushes) {
+        const distance = intendedPosition.distanceTo(bush.position);
+        const minDistance = dogCollisionRadius + bush.userData.collisionRadius;
+        
+        if (distance < minDistance) {
+          canMove = false;
+          console.log('🌿 Remote player collision with bush detected for player:', playerId);
+          break;
+        }
+      }
+      
+      // Only update position if no collision, otherwise keep current position
+      if (canMove) {
+        player.dog.position.set(position.x, position.y, position.z);
+      }
+      
       player.dog.rotation.set(rotation.x, rotation.y, rotation.z);
       
       // Update scooting state for remote players
