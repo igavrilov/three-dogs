@@ -29,12 +29,16 @@ class GameApp {
       gameTimer: document.getElementById('gameTimer'),
       gamePhase: document.getElementById('gamePhase'),
       winnerInfo: document.getElementById('winnerInfo'),
-      volumeSlider: document.getElementById('volumeSlider')
+      volumeSlider: document.getElementById('volumeSlider'),
+      playersList: document.getElementById('playersList'),
+      connectedPlayers: document.getElementById('connectedPlayers'),
+      readyBtn: document.getElementById('readyBtn')
     };
 
     // Event listeners
     this.elements.joinGameBtn.addEventListener('click', () => this.joinGame());
     this.elements.playAgainBtn.addEventListener('click', () => this.playAgain());
+    this.elements.readyBtn.addEventListener('click', () => this.setPlayerReady());
     
     // Enter key to join game
     this.elements.playerNameInput.addEventListener('keypress', e => {
@@ -63,6 +67,7 @@ class GameApp {
     this.networkManager.on('connected', data => {
       this.currentPlayerId = data.playerId;
       this.updateConnectionStatus('connected', 'Connected');
+      this.elements.playersList.innerHTML = '<div class="no-players">Finding other players...</div>';
       console.log('🔌 Connected to server with ID:', this.currentPlayerId);
     });
 
@@ -81,7 +86,9 @@ class GameApp {
     });
 
     this.networkManager.on('game_found', data => {
-      this.startGame(data);
+      // Update players list but don't start the game immediately
+      this.updatePlayersList(data.players, data.gameState?.state);
+      console.log('🏠 Joined room with', data.players.length, 'players');
     });
 
     this.networkManager.on('game_started', data => {
@@ -122,6 +129,15 @@ class GameApp {
       this.onCountdownCancelled(data);
     });
 
+    this.networkManager.on('room_updated', data => {
+      this.updatePlayersList(data.players, data.gameState);
+    });
+
+    this.networkManager.on('player_ready_update', data => {
+      // The room_updated event will handle the UI update, but we can show feedback here
+      console.log('Player ready update:', data);
+    });
+
     this.networkManager.connect();
   }
 
@@ -139,7 +155,15 @@ class GameApp {
     }
 
     this.elements.joinGameBtn.disabled = true;
+    this.elements.joinGameBtn.textContent = '✅ Name Set!';
     this.networkManager.joinGame(playerName);
+  }
+  
+  setPlayerReady() {
+    this.networkManager.sendPlayerReady();
+    this.elements.readyBtn.disabled = true;
+    this.elements.readyBtn.textContent = '✅ Ready!';
+    this.elements.readyBtn.classList.add('already-ready');
   }
 
   showWaitingScreen() {
@@ -178,6 +202,11 @@ class GameApp {
   }
 
   onGameStarted(data) {
+    // Initialize the 3D game if not already done
+    if (!this.game) {
+      this.startGame(data);
+    }
+    
     this.elements.gamePhase.textContent = 'Game Started!';
     this.startGameTimer(data.duration);
     
@@ -313,6 +342,63 @@ class GameApp {
     `).join('');
   }
 
+  updatePlayersList(players, gameState) {
+    if (!players || players.length === 0) {
+      this.elements.playersList.innerHTML = '<div class="no-players">No players in room</div>';
+      this.elements.readyBtn.classList.add('hidden');
+      return;
+    }
+
+    // Sort players to show current player first
+    const sortedPlayers = [...players].sort((a, b) => {
+      if (a.id === this.currentPlayerId) return -1;
+      if (b.id === this.currentPlayerId) return 1;
+      return 0;
+    });
+
+    const currentPlayer = sortedPlayers.find(p => p.id === this.currentPlayerId);
+    const isCurrentPlayerReady = currentPlayer ? currentPlayer.isReady : false;
+
+    const playersHtml = sortedPlayers.map(player => {
+      const isCurrentPlayer = player.id === this.currentPlayerId;
+      const statusClass = player.isReady ? 'ready' : 'waiting';
+      const statusText = player.isReady ? 'Ready' : 'Waiting';
+      
+      return `
+        <div class="player-item">
+          <div class="player-info">
+            <div class="player-color" style="background-color: ${player.color}"></div>
+            <span class="player-name">
+              ${player.name}${isCurrentPlayer ? ' (You)' : ''}
+            </span>
+          </div>
+          <div class="player-status ${statusClass}">
+            ${statusText}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.elements.playersList.innerHTML = playersHtml;
+    
+    // Show ready button if player is in room and game hasn't started
+    if (gameState === 'waiting' || gameState === 'countdown') {
+      this.elements.readyBtn.classList.remove('hidden');
+      
+      if (isCurrentPlayerReady) {
+        this.elements.readyBtn.disabled = true;
+        this.elements.readyBtn.textContent = '✅ Ready!';
+        this.elements.readyBtn.classList.add('already-ready');
+      } else {
+        this.elements.readyBtn.disabled = false;
+        this.elements.readyBtn.textContent = '🎯 Ready to Play!';
+        this.elements.readyBtn.classList.remove('already-ready');
+      }
+    } else {
+      this.elements.readyBtn.classList.add('hidden');
+    }
+  }
+
   updateConnectionStatus(status, text) {
     this.elements.connectionStatus.className = `ui-overlay ${status}`;
     this.elements.connectionStatus.innerHTML = status === 'waiting' 
@@ -379,7 +465,10 @@ class GameApp {
     this.hideAllScreens();
     this.elements.mainMenu.classList.remove('hidden');
     this.elements.joinGameBtn.disabled = false;
+    this.elements.joinGameBtn.textContent = '📝 Set Dog Name';
     this.updateConnectionStatus('connected', 'Connected');
+    this.elements.playersList.innerHTML = '<div class="no-players">Finding other players...</div>';
+    this.elements.readyBtn.classList.add('hidden');
   }
 }
 

@@ -33,10 +33,18 @@ export default class GameRoom {
     this.players.set(ws.playerId, playerData);
     this.playerReadyStatus.set(ws.playerId, false);
     
-    console.log(`✅ Player ${ws.playerName} joined room ${this.roomId}`);
+    console.log(`✅ Player ${ws.playerName} joined room ${this.roomId} (${this.players.size} players total)`);
     
-    // Start countdown when 2 players join
-    if (this.players.size === 2 && this.gameState === 'waiting') {
+    // Broadcast room update to all players
+    this.broadcastToRoom({
+      type: 'room_updated',
+      players: this.getPlayersInfo(),
+      gameState: this.gameState
+    });
+    
+    // Start countdown when first player joins (no minimum player requirement)
+    if (this.players.size === 1 && this.gameState === 'waiting') {
+      console.log(`⏰ Starting countdown with ${this.players.size} player(s) in room ${this.roomId}`);
       this.startCountdown();
     }
   }
@@ -48,8 +56,8 @@ export default class GameRoom {
       this.playerReadyStatus.delete(playerId);
       console.log(`❌ Player ${player.name} left room ${this.roomId}`);
       
-      // Cancel countdown if less than 2 players remain
-      if (this.gameState === 'countdown' && this.players.size < 2) {
+      // Cancel countdown if no players remain
+      if (this.gameState === 'countdown' && this.players.size === 0) {
         if (this.countdownTimer) {
           clearTimeout(this.countdownTimer);
           this.countdownTimer = null;
@@ -59,13 +67,20 @@ export default class GameRoom {
         
         this.broadcastToRoom({
           type: 'countdown_cancelled',
-          reason: 'Not enough players'
+          reason: 'No players remaining'
         });
         
-        console.log(`⏰ Countdown cancelled in room ${this.roomId} - not enough players`);
+        console.log(`⏰ Countdown cancelled in room ${this.roomId} - no players remaining`);
       }
       
-      // Notify remaining players
+      // Broadcast room update to all remaining players
+      this.broadcastToRoom({
+        type: 'room_updated',
+        players: this.getPlayersInfo(),
+        gameState: this.gameState
+      });
+      
+      // Also send the legacy player_left message
       this.broadcastToRoom({
         type: 'player_left',
         playerId,
@@ -162,16 +177,18 @@ export default class GameRoom {
     // Check if all players are ready
     const allReady = Array.from(this.playerReadyStatus.values()).every(ready => ready);
     
-    // During countdown, if all players are ready, start immediately
-    if (this.gameState === 'countdown' && allReady && this.players.size >= 2) {
+    // During countdown, if all players are ready, start immediately (no minimum required)
+    if (this.gameState === 'countdown' && allReady) {
       if (this.countdownTimer) {
         clearTimeout(this.countdownTimer);
         this.countdownTimer = null;
       }
+      console.log(`🚀 All ${this.players.size} player(s) ready - starting game immediately in room ${this.roomId}`);
       this.startGame();
     }
-    // If still waiting and only 1 player, start immediately when ready
-    else if (this.gameState === 'waiting' && allReady && this.players.size === 1) {
+    // If still waiting and all players are ready, start immediately
+    else if (this.gameState === 'waiting' && allReady) {
+      console.log(`🚀 All ${this.players.size} player(s) ready - starting game immediately in room ${this.roomId}`);
       this.startGame();
     }
     

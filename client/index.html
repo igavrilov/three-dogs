@@ -263,6 +263,83 @@
             justify-content: center;
             gap: 10px;
         }
+        
+        /* Connected Players Section */
+        .connected-players-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .players-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .player-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .player-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .player-name {
+            font-weight: 600;
+            color: white;
+        }
+        
+        .player-status {
+            font-size: 0.8em;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-weight: 500;
+        }
+        
+        .player-status.ready {
+            background: rgba(76, 175, 80, 0.8);
+            color: white;
+        }
+        
+        .player-status.waiting {
+            background: rgba(255, 193, 7, 0.8);
+            color: #333;
+        }
+        
+        .no-players {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .ready-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049) !important;
+            font-size: 1em !important;
+            padding: 12px 20px !important;
+        }
+        
+        .ready-btn:disabled {
+            background: linear-gradient(45deg, #666, #555) !important;
+        }
+        
+        .ready-btn.already-ready {
+            background: linear-gradient(45deg, #FF9800, #F57C00) !important;
+        }
 
         /* Mobile optimizations */
         @media (max-width: 768px) {
@@ -283,6 +360,29 @@
             #mainMenu {
                 padding: 20px;
                 width: calc(100% - 40px);
+            }
+            
+            .connected-players-section {
+                padding: 15px;
+            }
+            
+            .connected-players-section h3 {
+                font-size: 1em;
+                margin-bottom: 10px;
+            }
+            
+            .player-item {
+                padding: 8px 12px;
+                margin: 6px 0;
+            }
+            
+            .player-name {
+                font-size: 0.9em;
+            }
+            
+            .player-status {
+                font-size: 0.7em;
+                padding: 2px 6px;
             }
             
             .steal-notification {
@@ -306,10 +406,19 @@
         <!-- Main Menu -->
         <div id="mainMenu" class="ui-overlay">
             <h1>🐕 Dog Cleanup Battle</h1>
-            <p>Control your dog to clean up and color the most grass area with your poop!</p>
+            <p>Control your dog to clean up and color the most grass area with your poop! You're automatically connected to other players.</p>
             <input type="text" id="playerNameInput" placeholder="Enter your dog's name" maxlength="20">
             <br>
-            <button id="joinGameBtn">🎮 Join Game</button>
+            <button id="joinGameBtn">📝 Set Dog Name</button>
+            
+            <!-- Connected Players Section -->
+            <div id="connectedPlayers" class="connected-players-section" style="margin-top: 30px;">
+                <h3 style="color: #FFD700; margin-bottom: 15px; font-size: 1.2em;">🎮 Players in Room</h3>
+                <div id="playersList" class="players-list">
+                    <div class="no-players">Connecting...</div>
+                </div>
+                <button id="readyBtn" class="ready-btn hidden" style="margin-top: 15px; width: 100%;">🎯 Ready to Play!</button>
+            </div>
         </div>
         
         <!-- Game HUD -->

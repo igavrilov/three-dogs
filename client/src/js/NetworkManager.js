@@ -110,6 +110,12 @@ export default class NetworkManager {
       case 'player_left':
         this.emit('player_left', message);
         break;
+      case 'room_updated':
+        this.emit('room_updated', message);
+        break;
+      case 'player_ready_update':
+        this.emit('player_ready_update', message);
+        break;
       case 'error':
         this.emit('error', message);
         break;

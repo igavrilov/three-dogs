@@ -36,9 +36,12 @@ wss.on('connection', ws => {
   console.log('🔌 New player connected');
   
   ws.playerId = uuidv4();
-  ws.playerName = null;
+  ws.playerName = `Dog${Math.floor(Math.random() * 1000)}`; // Temporary name
   ws.gameRoom = null;
   ws.isAlive = true;
+
+  // Automatically assign player to a room
+  assignPlayerToRoom(ws);
 
   ws.send(JSON.stringify({
     type: 'connected',
@@ -71,38 +74,41 @@ function handleMessage(ws, message) {
     case 'player_action':
       handlePlayerAction(ws, message);
       break;
+    case 'player_ready':
+      handlePlayerReady(ws, message);
+      break;
   }
 }
 
-function handleJoinGame(ws, message) {
-  const { playerName } = message;
-  ws.playerName = playerName.trim();
-  
-  // Find an existing room that's waiting for players or create a new one
+function assignPlayerToRoom(ws) {
+  // Find an existing room that's waiting for players or in countdown (allow joining)
   let gameRoom = null;
   let roomId = null;
   
-  // Look for a room that's still waiting for players
+  // Look for a room that can accept new players (waiting or countdown state)
   for (const [id, room] of gameRooms) {
-    if (room.gameState === 'waiting') {
+    if (room.gameState === 'waiting' || room.gameState === 'countdown') {
       gameRoom = room;
       roomId = id;
       break;
     }
   }
   
-  // If no waiting room found, create a new one
+  // If no available room found, create a new one
   if (!gameRoom) {
     roomId = uuidv4();
     gameRoom = new GameRoom(roomId);
     gameRooms.set(roomId, gameRoom);
+    console.log(`🏠 Created new room ${roomId} for auto-connect`);
+  } else {
+    console.log(`🏠 Player auto-joining existing room ${roomId} with ${gameRoom.getPlayerCount()} players`);
   }
   
   // Add player to the room
   gameRoom.addPlayer(ws);
   ws.gameRoom = gameRoom;
   
-  // Send game found message
+  // Send game found message to all players in room
   gameRoom.broadcastToRoom({
     type: 'game_found',
     roomId,
@@ -110,15 +116,37 @@ function handleJoinGame(ws, message) {
     gameState: gameRoom.getGameState()
   });
   
-  // Auto-start the game after a short delay if this is the first player
-  // or if there are already multiple players
-  if (gameRoom.getPlayerCount() >= 1) {
-    setTimeout(() => {
-      // Set all current players as ready
-      gameRoom.players.forEach(player => {
-        gameRoom.setPlayerReady(player.id);
-      });
-    }, 1000); // 1 second delay to allow UI to initialize
+  // Also send the room update to ensure the new player gets the current state
+  setTimeout(() => {
+    gameRoom.broadcastToRoom({
+      type: 'room_updated',
+      players: gameRoom.getPlayersInfo(),
+      gameState: gameRoom.gameState
+    });
+  }, 100);
+}
+
+function handleJoinGame(ws, message) {
+  const { playerName } = message;
+  const oldName = ws.playerName;
+  ws.playerName = playerName.trim();
+  
+  console.log(`📝 Player ${oldName} changed name to ${ws.playerName} in room ${ws.gameRoom?.roomId}`);
+  
+  // Update the room with the new player name
+  if (ws.gameRoom) {
+    // Update player data in the room
+    const player = ws.gameRoom.players.get(ws.playerId);
+    if (player) {
+      player.name = ws.playerName;
+    }
+    
+    // Broadcast updated player info
+    ws.gameRoom.broadcastToRoom({
+      type: 'room_updated',
+      players: ws.gameRoom.getPlayersInfo(),
+      gameState: ws.gameRoom.gameState
+    });
   }
 }
 
@@ -131,6 +159,12 @@ function handlePlayerMove(ws, message) {
 function handlePlayerAction(ws, message) {
   if (ws.gameRoom && message.action === 'cleanup') {
     ws.gameRoom.handleCleanupAction(ws.playerId, message.position);
+  }
+}
+
+function handlePlayerReady(ws, message) {
+  if (ws.gameRoom) {
+    ws.gameRoom.setPlayerReady(ws.playerId);
   }
 }
 
